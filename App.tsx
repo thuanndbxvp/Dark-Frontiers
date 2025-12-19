@@ -51,12 +51,12 @@ const App: React.FC = () => {
     includeIntro: false,
     includeOutro: false,
   });
-  const [wordCount, setWordCount] = useState<string>('800');
+  const [wordCount, setWordCount] = useState<string>(isDarkFrontiers ? '5000' : '800');
   const [scriptParts, setScriptParts] = useState<string>('Auto');
   const [scriptType, setScriptType] = useState<ScriptType>('Video');
   const [numberOfSpeakers, setNumberOfSpeakers] = useState<NumberOfSpeakers>('Auto');
   const [lengthType, setLengthType] = useState<'words' | 'duration'>('words');
-  const [videoDuration, setVideoDuration] = useState<string>('5');
+  const [videoDuration, setVideoDuration] = useState<string>(isDarkFrontiers ? '30' : '5');
 
   const [generatedScript, setGeneratedScript] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -571,10 +571,14 @@ const App: React.FC = () => {
                         setStyleOptions({ expression: 'Ominous', style: 'Cinematic Horror' });
                         setTargetAudience('English');
                         setFormattingOptions(prev => ({ ...prev, bullets: false, bold: false }));
+                        setWordCount('5000');
+                        setVideoDuration('30');
                     } else {
                         setThemeColor('#38bdf8');
                         setTargetAudience(LANGUAGE_OPTIONS[0].value);
                         setFormattingOptions(prev => ({ ...prev, bullets: true, bold: true }));
+                        setWordCount('800');
+                        setVideoDuration('5');
                     }
                 }}
                 className={`px-4 py-2 rounded-lg font-bold text-xs transition-all flex items-center gap-2 border ${isDarkFrontiers ? 'bg-amber-900/40 text-amber-500 border-amber-500 shadow-lg shadow-amber-900/20' : 'bg-secondary text-text-secondary border-border hover:text-text-primary'}`}
