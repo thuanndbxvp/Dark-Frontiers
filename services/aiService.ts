@@ -134,7 +134,7 @@ Somber, heavy atmosphere, quiet suffering, human fragility.
 Old illustration and engraving influence, documentary feeling, raw and unpolished.
 No beauty idealization, no fine art photography look. No modern aesthetics.
 Aspect ratio 16:9.
-[INSERT IMAGE CONTENT HERE]`;
+[IMAGE_CONTENT]`;
 
 export const generateScript = async (params: GenerationParams, provider: AiProvider, model: string): Promise<string> => {
     const { title, targetAudience, wordCount, isDarkFrontiers } = params;
@@ -223,7 +223,15 @@ export const generateKeywordSuggestions = async (title: string, provider: AiProv
 };
 
 export const generateVisualPrompt = async (sceneDescription: string, provider: AiProvider, model: string): Promise<VisualPrompt[]> => {
-    const prompt = `Tạo 4 prompt hình ảnh Social Realism từ trích đoạn này. JSON: [ { "english": "...", "vietnamese": "..." } ].\nKỊCH BẢN: "${sceneDescription}"`;
+    const templateWithContent = SOCIAL_REALISM_TEMPLATE.replace('[IMAGE_CONTENT]', '[INSERT IMAGE CONTENT HERE]');
+    const prompt = `NHIỆM VỤ: Tạo 4 prompt hình ảnh cực kỳ chi tiết cho Midjourney/Leonardo.
+    PHONG CÁCH BẮT BUỘC: Social Realism 19th Century (U ám, sương mù, tranh sơn dầu thô ráp).
+    MẪU CẤU TRÚC (BẮT BUỘC SỬ DỤNG):
+    ${templateWithContent}
+    
+    Hãy thay thế [INSERT IMAGE CONTENT HERE] bằng nội dung hình ảnh cụ thể dựa trên kịch bản sau: "${sceneDescription}".
+    Trả về JSON array: [ { "english": "FULL_PROMPT_STRING_WITH_TEMPLATE", "vietnamese": "Mô tả ngắn gọn cảnh bằng tiếng Việt" } ].`;
+    
     try {
         const response = await callApi(prompt, provider, model);
         return JSON.parse(cleanJsonResponse(response));
@@ -231,7 +239,12 @@ export const generateVisualPrompt = async (sceneDescription: string, provider: A
 };
 
 export const generateAllVisualPrompts = async (script: string, provider: AiProvider, model: string): Promise<AllVisualPromptsResult[]> => {
-    const prompt = `Tạo prompts hình ảnh cho các cảnh chính. JSON array: { scene, english, vietnamese }. Phong cách Social Realism (19th century).`;
+    const prompt = `NHIỆM VỤ: Tạo prompts hình ảnh cho toàn bộ kịch bản.
+    PHONG CÁCH: 19th century social realism.
+    CẤU TRÚC: ${SOCIAL_REALISM_TEMPLATE.replace('[IMAGE_CONTENT]', '{image_content}')}
+    JSON array: { scene: "Đoạn kịch bản", english: "Prompt đầy đủ", vietnamese: "Dịch nghĩa" }.
+    KỊCH BẢN:
+    ${script}`;
     try {
         const response = await callApi(prompt, provider, model);
         return JSON.parse(cleanJsonResponse(response));
@@ -239,7 +252,12 @@ export const generateAllVisualPrompts = async (script: string, provider: AiProvi
 };
 
 export const summarizeScriptForScenes = async (script: string, config: SummarizeConfig, provider: AiProvider, model: string): Promise<ScriptPartSummary[]> => {
-    const prompt = `Phân tích kịch bản thành cảnh quay. JSON ScriptPartSummary. Phong cách ảnh: ${SOCIAL_REALISM_TEMPLATE}.\nKỊCH BẢN:\n${script}`;
+    const prompt = `Phân tích kịch bản thành cảnh quay. 
+    DÙNG PHONG CÁCH: 19th century social realism cho prompts.
+    MẪU PROMPT ẢNH (imagePrompt): ${SOCIAL_REALISM_TEMPLATE.replace('[IMAGE_CONTENT]', '{Mô tả chi tiết nội dung ảnh}')}
+    
+    JSON ScriptPartSummary.
+    KỊCH BẢN:\n${script}`;
     try {
         const response = await callApi(prompt, provider, model);
         return JSON.parse(cleanJsonResponse(response));

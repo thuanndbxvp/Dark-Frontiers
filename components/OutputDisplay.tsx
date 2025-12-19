@@ -13,6 +13,9 @@ import type { ScriptType, VisualPrompt } from '../types';
 import { UploadIcon } from './icons/UploadIcon';
 import { Tooltip } from './Tooltip';
 
+// Make TypeScript aware of the global XLSX object from the CDN
+declare const XLSX: any;
+
 interface OutputDisplayProps {
   script: string;
   isLoading: boolean;
@@ -91,7 +94,8 @@ const cleanTtsText = (text: string): string => {
         .replace(/\*\*\*+/g, '') // Remove ***
         .replace(/\[.*?\]/g, '') // Remove [SFX], [Scene]
         .replace(/\*\*\s*#+.*?\*\*/g, '') // Remove headers inside bold
-        .replace(/^\s*\*\*#+.*?\*\*/gm, '') // Header lines
+        .replace(/^\s*\*\*#+.*?\*\*/gm, '') // Header lines at start
+        .replace(/^\s*#+.*$/gm, '') // Markdown headers
         .replace(/\*\*\s*\(.*?\)\s*\*\*/g, '') // Tone instructions bold
         .replace(/\*\s*\(.*?\)\s*\*/g, '') // Tone instructions italic
         .replace(/\(.*?Voice.*?\)/gi, '') // Voice notes
@@ -154,6 +158,42 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
         URL.revokeObjectURL(url);
     };
 
+    const handleExportExcel = () => {
+        if (!script || typeof XLSX === 'undefined') return;
+
+        // Split by main headers
+        const sections = script.split(/(?=^#+ .*?$|^#{0,3}\s*\*\*#+ .*?)/m).filter(s => s.trim() !== '' && !s.includes('---') && !s.includes('### Dàn Ý Chi Tiết'));
+        
+        const data = sections.map((section, index) => {
+            const lines = section.split('\n');
+            const rawTitle = lines[0].trim().replace(/^\*\*#+|\*\*|#+\s*/g, '');
+            const content = lines.slice(1).join('\n');
+            const cleanedTts = cleanTtsText(content);
+            return [rawTitle || `Phần ${index + 1}`, cleanedTts];
+        }).filter(row => row[0] || row[1]);
+
+        if (data.length === 0) {
+            // Fallback for non-sectioned scripts
+            data.push(['Kịch bản đầy đủ', cleanTtsText(script)]);
+        }
+
+        const worksheet = XLSX.utils.aoa_to_sheet([
+            ['Tên phân đoạn', 'Kịch bản (Ready for tts)'],
+            ...data
+        ]);
+
+        // Standard styling for accessibility/readability in Excel
+        const wscols = [
+            { wch: 30 },
+            { wch: 120 }
+        ];
+        worksheet['!cols'] = wscols;
+
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'Kịch bản');
+        XLSX.writeFile(workbook, 'youtube-script.xlsx');
+    };
+
     const handleImportClick = () => {
         fileInputRef.current?.click();
     };
@@ -194,7 +234,7 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
         }
         if (script) {
             // Split by main headers
-            const sections = script.split(/(?=^#+ .*?$|^#{0,3}\s*\*\*#+ .*?)/m).filter(s => s.trim() !== '' && !s.includes('---'));
+            const sections = script.split(/(?=^#+ .*?$|^#{0,3}\s*\*\*#+ .*?)/m).filter(s => s.trim() !== '' && !s.includes('---') && !s.includes('### Dàn Ý Chi Tiết'));
             
             // If it's just the initial "BẮT ĐẦU" or "DÀN Ý", render as simple text
             if (isOutline || script.includes('--- BẮT ĐẦU')) {
@@ -208,9 +248,9 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
             }
 
             return (
-                <div className="overflow-x-auto rounded-lg border border-border">
-                    <table className="w-full border-collapse text-left">
-                        <thead className="bg-primary/50 text-accent font-bold text-xs uppercase tracking-wider">
+                <div className="overflow-x-auto rounded-lg border border-border shadow-sm">
+                    <table className="w-full border-collapse text-left bg-secondary/30">
+                        <thead className="bg-primary/80 text-accent font-bold text-xs uppercase tracking-wider sticky top-0">
                             <tr>
                                 <th className="p-4 border-b border-border w-1/4">Tên phân đoạn</th>
                                 <th className="p-4 border-b border-border w-3/4">Kịch bản (Ready for tts)</th>
@@ -229,27 +269,29 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
                                 if (!cleanedTts && !rawTitle) return null;
 
                                 return (
-                                    <tr key={index} className="group hover:bg-primary/20 transition-colors">
-                                        <td className="p-4 align-top">
-                                            <span className="text-sm font-bold text-text-primary block mb-2">{rawTitle || `Phần ${index + 1}`}</span>
-                                            {/* Action button for visual prompt moved here for cleaner UI */}
-                                            {cleanedTts.length > 50 && (
+                                    <tr key={index} className="group hover:bg-primary/40 transition-colors">
+                                        <td className="p-4 align-top border-r border-border/20">
+                                            <span className="text-sm font-bold text-text-primary block mb-3">{rawTitle || `Phần ${index + 1}`}</span>
+                                            {cleanedTts.length > 20 && (
                                                 <button
                                                     onClick={() => onGenerateVisualPrompt(section)}
                                                     disabled={isPartLoading}
-                                                    className={`inline-flex items-center gap-2 px-2 py-1 text-[10px] font-bold rounded transition disabled:opacity-50 ${
+                                                    className={`inline-flex items-center gap-2 px-2.5 py-1 text-[10px] font-bold rounded shadow-sm transition-all disabled:opacity-50 ${
                                                         hasCache 
-                                                        ? 'bg-accent/10 text-accent border border-accent/20' 
-                                                        : 'bg-secondary text-text-secondary border border-border'
+                                                        ? 'bg-accent text-white' 
+                                                        : 'bg-secondary text-text-secondary border border-border hover:border-accent/50'
                                                     }`}
                                                 >
-                                                    {isPartLoading ? '...' : (hasCache ? 'PROMPT ✓' : '+ ẢNH')}
+                                                    {isPartLoading ? (
+                                                        <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
+                                                    ) : <CameraIcon className="w-3 h-3" />}
+                                                    {hasCache ? 'ĐÃ CÓ PROMPT ✓' : 'TẠO ẢNH'}
                                                 </button>
                                             )}
                                         </td>
                                         <td className="p-4 align-top">
-                                            <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">
-                                                {cleanedTts || <span className="italic opacity-30">(Không có lời thoại)</span>}
+                                            <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap font-sans">
+                                                {cleanedTts || <span className="italic opacity-30 text-xs">(Phần này không có lời thoại để đọc)</span>}
                                             </p>
                                         </td>
                                     </tr>
@@ -273,7 +315,7 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
             accept=".txt,.srt,.xlsx"
             className="hidden"
         />
-        <div className="flex justify-between items-center p-4 border-b border-border flex-wrap gap-2 sticky top-[81px] bg-secondary/80 backdrop-blur-sm z-10">
+        <div className="flex justify-between items-center p-4 border-b border-border flex-wrap gap-2 sticky top-[81px] bg-secondary/95 backdrop-blur-md z-10">
             <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
                 <span>{getTitle()}</span>
                 {isLoading && (
@@ -283,9 +325,9 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
                     </svg>
                 )}
             </h2>
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
                 {script && !isLoading && isOutline && !isGeneratingSequentially && (
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                          <div className="flex items-center gap-2 bg-primary/40 px-3 py-1.5 rounded-md border border-border">
                             <input 
                                 type="checkbox" 
@@ -305,7 +347,6 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
 
                 {isGeneratingSequentially && (
                     <div className="flex items-center gap-2">
-                        {/* Auto-next Toggle inside Generation Flow */}
                         <button 
                             onClick={() => setAutoContinue?.(!autoContinue)}
                             className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-sm font-semibold transition border ${
@@ -318,7 +359,6 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
                             <span>Auto-next: {autoContinue ? 'Bật' : 'Tắt'}</span>
                         </button>
 
-                        {/* Continue Button */}
                         {!isLoading && currentPart < totalParts && (
                             <button 
                                 onClick={onGenerateNextPart} 
@@ -329,7 +369,6 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
                             </button>
                         )}
                         
-                        {/* Stop Button - Enabled only when loading */}
                         <button 
                             onClick={onStopSequentialGenerate} 
                             disabled={!isLoading}
@@ -356,11 +395,19 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
 
                 {showActionControls && !isGeneratingSequentially && (
                     <>
-                        <button onClick={handleExportTxt} className="flex items-center space-x-2 bg-secondary hover:bg-primary/50 text-text-primary px-3 py-1.5 rounded-md text-sm transition disabled:opacity-50 disabled:cursor-not-allowed border border-border" disabled={isLoading}>
+                        <button onClick={handleExportTxt} className="flex items-center space-x-2 bg-secondary hover:bg-primary/50 text-text-primary px-3 py-1.5 rounded-md text-sm transition disabled:opacity-50 border border-border" disabled={isLoading}>
                             <DownloadIcon className="w-4 h-4" />
                             <span>Tải .txt</span>
                         </button>
-                        <button onClick={handleCopy} className="flex items-center space-x-2 bg-secondary hover:bg-primary/50 text-text-primary px-3 py-1.5 rounded-md text-sm transition disabled:opacity-50 disabled:cursor-not-allowed border border-border" disabled={!!copySuccess || isLoading}>
+                        <button 
+                            onClick={handleExportExcel} 
+                            className="flex items-center space-x-2 bg-secondary hover:bg-primary/50 text-text-primary px-3 py-1.5 rounded-md text-sm transition border border-border disabled:opacity-50" 
+                            disabled={isLoading}
+                        >
+                            <DownloadIcon className="w-4 h-4 text-green-500" />
+                            <span className="text-green-500 font-semibold">Tải Excel</span>
+                        </button>
+                        <button onClick={handleCopy} className="flex items-center space-x-2 bg-secondary hover:bg-primary/50 text-text-primary px-3 py-1.5 rounded-md text-sm transition disabled:opacity-50 border border-border" disabled={!!copySuccess || isLoading}>
                             <ClipboardIcon className="w-4 h-4" />
                             <span>{copySuccess || 'Sao chép'}</span>
                         </button>
