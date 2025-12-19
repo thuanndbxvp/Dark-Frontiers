@@ -5,6 +5,9 @@ import { DownloadIcon } from './icons/DownloadIcon';
 import { PlayIcon } from './icons/PlayIcon';
 import { SpeakerWaveIcon } from './icons/SpeakerWaveIcon';
 import { KeyIcon } from './icons/KeyIcon';
+import { TrashIcon } from './icons/TrashIcon';
+import { BookmarkIcon } from './icons/BookmarkIcon';
+import { getElevenlabsVoiceById } from '../services/aiService';
 
 interface TtsModalProps {
   isOpen: boolean;
@@ -22,7 +25,7 @@ interface GenerationStatus {
     error: string | null;
 }
 
-const VoiceItem: React.FC<{voice: ElevenlabsVoice, isSelected: boolean, onSelect: () => void}> = ({ voice, isSelected, onSelect }) => {
+const VoiceItem: React.FC<{voice: ElevenlabsVoice, isSelected: boolean, onSelect: () => void, isSaved?: boolean, onDelete?: (e: React.MouseEvent) => void}> = ({ voice, isSelected, onSelect, isSaved, onDelete }) => {
     const audioRef = useRef<HTMLAudioElement>(null);
     const [isPlaying, setIsPlaying] = useState(false);
 
@@ -59,17 +62,27 @@ const VoiceItem: React.FC<{voice: ElevenlabsVoice, isSelected: boolean, onSelect
             onClick={onSelect}
             className={`p-3 rounded-lg flex justify-between items-center cursor-pointer transition-colors border ${isSelected ? 'bg-accent text-white border-accent' : 'bg-primary hover:bg-primary/50 border-border'}`}
         >
-            <div className="flex-grow">
-                <p className="font-semibold">{voice.name}</p>
+            <div className="flex-grow overflow-hidden">
+                <div className="flex items-center gap-2">
+                    <p className="font-semibold truncate">{voice.name}</p>
+                    {isSaved && <span className="text-[9px] bg-amber-500/20 text-amber-500 px-1.5 py-0.5 rounded uppercase font-bold tracking-tighter flex-shrink-0">Đã lưu</span>}
+                </div>
                 <div className="text-xs opacity-80 flex flex-wrap gap-x-2 gap-y-1 mt-1">
                     {voice.labels.gender && <span>{voice.labels.gender}</span>}
                     {voice.labels.age && <span>{voice.labels.age}</span>}
-                    {voice.labels.accent && <span>{voice.labels.accent}</span>}
+                    {voice.labels.accent && <span className="truncate">{voice.labels.accent}</span>}
                 </div>
             </div>
-            <button onClick={handlePlayPreview} className="p-2 rounded-full hover:bg-white/20 transition-colors flex-shrink-0">
-                <PlayIcon className={`w-5 h-5 ${isPlaying ? 'text-yellow-400' : ''}`} />
-            </button>
+            <div className="flex items-center gap-1">
+                <button onClick={handlePlayPreview} className="p-2 rounded-full hover:bg-white/20 transition-colors flex-shrink-0" title="Nghe thử">
+                    <PlayIcon className={`w-5 h-5 ${isPlaying ? 'text-yellow-400' : ''}`} />
+                </button>
+                {onDelete && (
+                    <button onClick={onDelete} className="p-2 rounded-full hover:bg-red-500/20 text-red-400 transition-colors flex-shrink-0" title="Xóa khỏi danh sách lưu">
+                        <TrashIcon className="w-4 h-4" />
+                    </button>
+                )}
+            </div>
             <audio ref={audioRef} src={voice.preview_url} preload="none" />
         </li>
     );
@@ -78,8 +91,23 @@ const VoiceItem: React.FC<{voice: ElevenlabsVoice, isSelected: boolean, onSelect
 export const TtsModal: React.FC<TtsModalProps> = ({ isOpen, onClose, dialogue, voices, isLoadingVoices, onGenerate, error }) => {
     const [selectedVoiceId, setSelectedVoiceId] = useState<string>('');
     const [customVoiceId, setCustomVoiceId] = useState<string>('');
+    const [isFetchingCustomVoice, setIsFetchingCustomVoice] = useState(false);
+    const [customVoiceData, setCustomVoiceData] = useState<ElevenlabsVoice | null>(null);
+    const [savedVoices, setSavedVoices] = useState<ElevenlabsVoice[]>([]);
+    
     const [editableDialogue, setEditableDialogue] = useState<Record<string, string>>({});
     const [generationState, setGenerationState] = useState<Record<string, GenerationStatus>>({});
+
+    useEffect(() => {
+        const saved = localStorage.getItem('elevenlabs-custom-voices');
+        if (saved) {
+            try {
+                setSavedVoices(JSON.parse(saved));
+            } catch (e) {
+                console.error("Lỗi khi tải danh sách giọng nói đã lưu", e);
+            }
+        }
+    }, []);
 
     useEffect(() => {
         if(voices.length > 0 && !selectedVoiceId && !customVoiceId) {
@@ -96,8 +124,48 @@ export const TtsModal: React.FC<TtsModalProps> = ({ isOpen, onClose, dialogue, v
     
     if (!isOpen) return null;
 
+    const handleFetchCustomVoice = async () => {
+        const id = customVoiceId.trim();
+        if (!id) return;
+
+        setIsFetchingCustomVoice(true);
+        setCustomVoiceData(null);
+        try {
+            const voice = await getElevenlabsVoiceById(id);
+            setCustomVoiceData(voice);
+            setSelectedVoiceId(voice.voice_id);
+        } catch (err) {
+            alert(err instanceof Error ? err.message : "Không thể tải thông tin giọng nói này.");
+        } finally {
+            setIsFetchingCustomVoice(false);
+        }
+    };
+
+    const handleSaveCustomVoice = () => {
+        if (!customVoiceData) return;
+        
+        if (savedVoices.some(v => v.voice_id === customVoiceData.voice_id)) {
+            alert("Giọng nói này đã có trong danh sách lưu.");
+            return;
+        }
+
+        const updated = [customVoiceData, ...savedVoices];
+        setSavedVoices(updated);
+        localStorage.setItem('elevenlabs-custom-voices', JSON.stringify(updated));
+    };
+
+    const handleDeleteSavedVoice = (e: React.MouseEvent, voiceId: string) => {
+        e.stopPropagation();
+        const updated = savedVoices.filter(v => v.voice_id !== voiceId);
+        setSavedVoices(updated);
+        localStorage.setItem('elevenlabs-custom-voices', JSON.stringify(updated));
+        if (selectedVoiceId === voiceId) {
+            setSelectedVoiceId(voices[0]?.voice_id || '');
+        }
+    };
+
     const handleGenerateForPart = async (partTitle: string) => {
-        const finalVoiceId = customVoiceId.trim() || selectedVoiceId;
+        const finalVoiceId = selectedVoiceId || customVoiceId.trim();
         if (!finalVoiceId || !editableDialogue[partTitle]) return;
 
         setGenerationState(prev => ({
@@ -140,37 +208,94 @@ export const TtsModal: React.FC<TtsModalProps> = ({ isOpen, onClose, dialogue, v
                     <div className="mb-4 bg-primary p-3 rounded-lg border border-border">
                         <label className="block text-xs font-bold text-text-secondary mb-2 uppercase tracking-wider flex items-center gap-2">
                             <KeyIcon className="w-3.5 h-3.5 text-accent"/>
-                            Nhập Voice ID thủ công (Ưu tiên)
+                            Nhập Voice ID từ ElevenLabs
                         </label>
-                        <input 
-                            type="text"
-                            value={customVoiceId}
-                            onChange={(e) => {
-                                setCustomVoiceId(e.target.value);
-                                if (e.target.value.trim()) setSelectedVoiceId('');
-                            }}
-                            className="w-full bg-secondary border border-border rounded-md p-2 text-text-primary text-sm focus:ring-1 focus:ring-accent outline-none font-mono"
-                            placeholder="VD: pMsX7pD957... (ID từ ElevenLabs)"
-                        />
-                        <p className="text-[10px] text-text-secondary mt-2 italic">* Nếu nhập ID ở đây, các lựa chọn bên dưới sẽ bị bỏ qua.</p>
+                        <div className="flex gap-2">
+                            <input 
+                                type="text"
+                                value={customVoiceId}
+                                onChange={(e) => setCustomVoiceId(e.target.value)}
+                                className="flex-grow bg-secondary border border-border rounded-md p-2 text-text-primary text-sm focus:ring-1 focus:ring-accent outline-none font-mono"
+                                placeholder="VD: pMsX7pD957... (Voice ID)"
+                            />
+                            <button
+                                onClick={handleFetchCustomVoice}
+                                disabled={isFetchingCustomVoice || !customVoiceId.trim()}
+                                className="bg-accent/10 hover:bg-accent/20 text-accent font-bold px-3 py-2 rounded-md transition text-xs border border-accent/30 disabled:opacity-40"
+                            >
+                                {isFetchingCustomVoice ? '...' : 'Tải info'}
+                            </button>
+                        </div>
+                        
+                        {customVoiceData && (
+                            <div className="mt-3 p-3 bg-secondary rounded-lg border border-accent/40 animate-in fade-in slide-in-from-top-2">
+                                <div className="flex justify-between items-start mb-2">
+                                    <div>
+                                        <p className="text-sm font-bold text-accent">{customVoiceData.name}</p>
+                                        <div className="flex gap-2 mt-1">
+                                            {Object.values(customVoiceData.labels).map((label, idx) => (
+                                                <span key={idx} className="text-[10px] bg-primary px-1.5 py-0.5 rounded text-text-secondary">{label}</span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <button 
+                                        onClick={handleSaveCustomVoice}
+                                        className="p-1.5 bg-accent text-white rounded-md hover:brightness-110 transition"
+                                        title="Lưu giọng nói này"
+                                    >
+                                        <BookmarkIcon className="w-4 h-4" />
+                                    </button>
+                                </div>
+                                <div className="flex items-center gap-3 mt-2 pt-2 border-t border-border/50">
+                                    <p className="text-[10px] text-text-secondary italic">Nghe thử:</p>
+                                    <audio controls src={customVoiceData.preview_url} className="h-6 w-full opacity-70"></audio>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex-grow bg-primary rounded-lg p-3 overflow-y-auto border border-border">
-                        {isLoadingVoices && <p className="text-center p-4">Đang tải danh sách giọng nói...</p>}
-                        {error && !isLoadingVoices && <p className="text-red-400 p-4">{error}</p>}
-                        <ul className="space-y-2">
-                            {voices.map(voice => (
-                                <VoiceItem 
-                                    key={voice.voice_id}
-                                    voice={voice}
-                                    isSelected={selectedVoiceId === voice.voice_id && !customVoiceId.trim()}
-                                    onSelect={() => {
-                                        setSelectedVoiceId(voice.voice_id);
-                                        setCustomVoiceId('');
-                                    }}
-                                />
-                            ))}
-                        </ul>
+                        <div className="space-y-4">
+                            {savedVoices.length > 0 && (
+                                <div>
+                                    <h4 className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-2 flex items-center gap-2">
+                                        <BookmarkIcon className="w-3 h-3"/>
+                                        Giọng nói đã lưu
+                                    </h4>
+                                    <ul className="space-y-2">
+                                        {savedVoices.map(voice => (
+                                            <VoiceItem 
+                                                key={`saved-${voice.voice_id}`}
+                                                voice={voice}
+                                                isSelected={selectedVoiceId === voice.voice_id}
+                                                onSelect={() => setSelectedVoiceId(voice.voice_id)}
+                                                isSaved
+                                                onDelete={(e) => handleDeleteSavedVoice(e, voice.voice_id)}
+                                            />
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+
+                            <div>
+                                <h4 className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-2">Danh sách hệ thống</h4>
+                                {isLoadingVoices && <p className="text-center p-4 text-sm">Đang tải danh sách giọng nói...</p>}
+                                {error && !isLoadingVoices && <p className="text-red-400 p-4 text-sm">{error}</p>}
+                                <ul className="space-y-2">
+                                    {voices.map(voice => (
+                                        <VoiceItem 
+                                            key={voice.voice_id}
+                                            voice={voice}
+                                            isSelected={selectedVoiceId === voice.voice_id}
+                                            onSelect={() => {
+                                                setSelectedVoiceId(voice.voice_id);
+                                                setCustomVoiceId('');
+                                            }}
+                                        />
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

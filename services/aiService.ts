@@ -238,6 +238,23 @@ export const getElevenlabsVoices = async (): Promise<ElevenlabsVoice[]> => {
 };
 
 /**
+ * Lấy thông tin một giọng nói cụ thể theo ID
+ */
+export const getElevenlabsVoiceById = async (voiceId: string): Promise<ElevenlabsVoice> => {
+    const { apiKey, releaseKey } = await apiKeyManager.getAvailableKey('elevenlabs');
+    try {
+        const res = await fetch(`https://api.elevenlabs.io/v1/voices/${voiceId}`, {
+            headers: { 'xi-api-key': apiKey }
+        });
+        if (!res.ok) throw new Error(`Không tìm thấy giọng nói với ID: ${voiceId}`);
+        const data = await res.json();
+        return data;
+    } finally {
+        releaseKey();
+    }
+};
+
+/**
  * Tạo TTS ElevenLabs với cơ chế tự động xoay key khi lỗi
  */
 export const generateElevenlabsTts = async (text: string, voiceId: string): Promise<string> => {
