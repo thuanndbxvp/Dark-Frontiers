@@ -32,18 +32,22 @@ const YoutubeLogoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
 );
 
 const App: React.FC = () => {
+  // --- DEFAULT DF MODE STATES ---
+  const [isDarkFrontiers, setIsDarkFrontiers] = useState<boolean>(true);
   const [title, setTitle] = useState<string>('');
   const [outlineContent, setOutlineContent] = useState<string>('');
-  const [targetAudience, setTargetAudience] = useState<string>(LANGUAGE_OPTIONS[0].value);
+  const [targetAudience, setTargetAudience] = useState<string>('English'); // Default to English for DF
   const [styleOptions, setStyleOptions] = useState<StyleOptions>({
-    expression: 'Conversational',
-    style: STYLE_OPTIONS[0].value,
+    expression: 'Ominous', // Default for DF
+    style: 'Cinematic Horror', // Default for DF
   });
+  const [themeColor, setThemeColor] = useState<string>('#f59e0b'); // Default Amber for DF
+  
   const [keywords, setKeywords] = useState<string>('');
   const [formattingOptions, setFormattingOptions] = useState<FormattingOptions>({
     headings: true,
-    bullets: true,
-    bold: true,
+    bullets: false, // Default false for DF
+    bold: false, // Default false for DF
     includeIntro: false,
     includeOutro: false,
   });
@@ -53,7 +57,6 @@ const App: React.FC = () => {
   const [numberOfSpeakers, setNumberOfSpeakers] = useState<NumberOfSpeakers>('Auto');
   const [lengthType, setLengthType] = useState<'words' | 'duration'>('words');
   const [videoDuration, setVideoDuration] = useState<string>('5');
-  const [isDarkFrontiers, setIsDarkFrontiers] = useState<boolean>(false);
 
   const [generatedScript, setGeneratedScript] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -137,7 +140,6 @@ const App: React.FC = () => {
   const [hasSummarizedScript, setHasSummarizedScript] = useState<boolean>(false);
   const [hasSavedToLibrary, setHasSavedToLibrary] = useState<boolean>(false);
 
-  const [themeColor, setThemeColor] = useState<string>('#38bdf8');
   const [wordCountStats, setWordCountStats] = useState<WordCountStats | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
 
@@ -208,6 +210,7 @@ const App: React.FC = () => {
     setIsGeneratingSequentially(false);
     setOutlineParts([]);
     setCurrentPartIndex(0);
+    setFullOutlineText('');
   };
 
   const handleGenerateScript = useCallback(async () => {
@@ -241,6 +244,7 @@ const App: React.FC = () => {
     try {
       const isLongScript = parseInt(finalWordCount, 10) >= 1000;
       if (isLongScript) {
+        // Giai đoạn 1: Tạo dàn ý chi tiết
         const outline = await generateScriptOutline(params, aiProvider, selectedModel);
         setGeneratedScript(outline);
         setFullOutlineText(outline);

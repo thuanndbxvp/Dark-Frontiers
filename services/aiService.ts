@@ -4,151 +4,104 @@ import type { GenerationParams, VisualPrompt, AllVisualPromptsResult, ScriptPart
 import { EXPRESSION_OPTIONS, STYLE_OPTIONS } from '../constants';
 import { apiKeyManager } from './apiKeyManager';
 
-// Helper function to detect if an error is related to API key failure
-const isKeyFailureError = (error: unknown, provider: AiProvider): boolean => {
-    if (!(error instanceof Error)) return false;
+/**
+ * Internal helper to check if an error is related to API key failure.
+ */
+const isKeyFailureError = (error: any): boolean => {
+    const msg = error?.message?.toLowerCase() || '';
+    return msg.includes('api key') || msg.includes('invalid') || msg.includes('401') || msg.includes('403') || msg.includes('requested entity was not found');
+};
 
-    const lowerCaseMessage = error.message.toLowerCase();
-    
+/**
+ * Internal helper for consistent error handling.
+ */
+const handleApiError = (error: any, action: string) => {
+    console.error(`Error during ${action}:`, error);
+    if (error instanceof Error) return error;
+    return new Error(`Lỗi khi ${action}: ${error?.message || 'Không xác định'}`);
+};
+
+/**
+ * Unified API caller for both Gemini and OpenAI providers.
+ * Follows @google/genai guidelines for Gemini initialization and response handling.
+ */
+const callApi = async (prompt: string, provider: AiProvider, model: string): Promise<string> => {
     if (provider === 'gemini') {
-        return lowerCaseMessage.includes('api key not valid') || 
-               lowerCaseMessage.includes('resource_exhausted') || 
-               lowerCaseMessage.includes('429');
-    }
-    if (provider === 'openai') {
-        return lowerCaseMessage.includes('invalid_api_key') || 
-               lowerCaseMessage.includes('insufficient_quota');
-    }
-    if (provider === 'elevenlabs') {
-        return lowerCaseMessage.includes('unauthorized');
-    }
-    return false;
-};
-
-// Helper function to handle API errors and provide more specific messages
-const handleApiError = (error: unknown, context: string): Error => {
-    console.error(`Lỗi trong lúc ${context}:`, error);
-
-    if (!(error instanceof Error)) {
-        return new Error(`Không thể ${context}. Đã xảy ra lỗi không xác định.`);
-    }
-
-    const errorMessage = error.message;
-    const lowerCaseErrorMessage = errorMessage.toLowerCase();
-
-    // Check for common network or client-side errors first
-    if (lowerCaseErrorMessage.includes('failed to fetch')) {
-        return new Error('Lỗi mạng. Vui lòng kiểm tra kết nối internet của bạn và thử lại.');
-    }
-    if (lowerCaseErrorMessage.includes('failed to execute') && lowerCaseErrorMessage.includes('on \'headers\'')) {
-        return new Error('Lỗi yêu cầu mạng: API key có thể chứa ký tự không hợp lệ.');
-    }
-
-    // Gemini-specific error parsing
-    try {
-        const jsonStartIndex = errorMessage.indexOf('{');
-        if (jsonStartIndex > -1) {
-            const jsonString = errorMessage.substring(jsonStartIndex);
-            const errorObj = JSON.parse(jsonString);
-            if (errorObj.error) {
-                const apiError = errorObj.error;
-                if (apiError.code === 429 || apiError.status === 'RESOURCE_EXHAUSTED') {
-                    return new Error('Bạn đã vượt quá giới hạn yêu cầu (Quota) của Gemini.');
-                }
-                return new Error(`Lỗi từ Gemini: ${apiError.message || JSON.stringify(apiError)}`);
-            }
-        }
-    } catch (e) { /* Fall through */ }
-    
-    // Generic fallback
-    return new Error(`Không thể ${context}. Chi tiết: ${errorMessage}`);
-};
-
-export const validateApiKey = async (apiKey: string, provider: AiProvider): Promise<boolean> => {
-    if (!apiKey) throw new Error("API Key không được để trống.");
-    try {
-        if (provider === 'gemini') {
-            const ai = new GoogleGenAI({ apiKey });
-            await ai.models.generateContent({ model: 'gemini-3-flash-preview', contents: 'test' });
-        } else if (provider === 'openai') {
-            const response = await fetch('https://api.openai.com/v1/models', {
-                headers: { 'Authorization': `Bearer ${apiKey}` }
-            });
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(JSON.stringify(errorData));
-            }
-        } else if (provider === 'elevenlabs') {
-            const response = await fetch('https://api.elevenlabs.io/v1/user', {
-                headers: { 'xi-api-key': apiKey }
-            });
-             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(JSON.stringify(errorData));
-            }
-        }
-        return true;
-    } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        if (errorMessage.toLowerCase().includes('resource_exhausted') || errorMessage.toLowerCase().includes('429')) {
-             return true; 
-        }
-        throw handleApiError(error, `xác thực API key ${provider}`);
-    }
-};
-
-const callApi = async (prompt: string, provider: AiProvider, model: string, jsonResponse = false): Promise<string> => {
-    const { apiKey, releaseKey } = await apiKeyManager.getAvailableKey(provider);
-    try {
-        if (provider === 'gemini') {
-            const ai = new GoogleGenAI({ apiKey });
+        const { apiKey, releaseKey } = await apiKeyManager.getAvailableKey('gemini');
+        try {
+            // ALWAYS use the named parameter `apiKey`.
+            // Use process.env.API_KEY as fallback if the manager returns empty.
+            const ai = new GoogleGenAI({ apiKey: apiKey || process.env.API_KEY || '' });
+            
+            // Use ai.models.generateContent directly with model name and prompt.
             const response = await ai.models.generateContent({
                 model: model,
                 contents: prompt,
-                ...(jsonResponse && { config: { responseMimeType: "application/json" } })
             });
-            return response.text;
-        } else { // openai
-            const body: any = {
-                model: model,
-                messages: [{ role: 'system', content: prompt }],
-                max_tokens: 4096,
-            };
-            if (jsonResponse) {
-                body.response_format = { type: 'json_object' };
-            }
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            
+            // Use the .text property directly (do not call as a method).
+            return response.text || '';
+        } catch (error) {
+            throw error;
+        } finally {
+            releaseKey();
+        }
+    } else if (provider === 'openai') {
+        const { apiKey, releaseKey } = await apiKeyManager.getAvailableKey('openai');
+        try {
+            const res = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${apiKey}`
                 },
-                body: JSON.stringify(body)
+                body: JSON.stringify({
+                    model: model,
+                    messages: [{ role: 'user', content: prompt }],
+                })
             });
-
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(JSON.stringify(data));
-            }
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error?.message || 'OpenAI API Error');
             return data.choices[0].message.content;
+        } finally {
+            releaseKey();
         }
-    } catch (error) {
-         if (isKeyFailureError(error, provider)) {
-            const keys: Record<AiProvider, string[]> = JSON.parse(localStorage.getItem('ai-api-keys') || '{}');
-            const providerKeys = keys[provider] || [];
-            if (providerKeys.length > 1) {
-                const failedKey = providerKeys.shift();
-                if (failedKey) providerKeys.push(failedKey);
-                localStorage.setItem('ai-api-keys', JSON.stringify(keys));
-                apiKeyManager.updateKeys(keys);
-                window.dispatchEvent(new CustomEvent('apiKeyRotated', { detail: { provider } }));
-            }
-        }
-        throw error;
-    } finally {
-        releaseKey();
     }
-}
+    throw new Error(`Provider ${provider} không được hỗ trợ.`);
+};
+
+/**
+ * Validates whether an API key is functional for the given provider.
+ */
+export const validateApiKey = async (key: string, provider: AiProvider): Promise<boolean> => {
+    if (provider === 'gemini') {
+        try {
+            const ai = new GoogleGenAI({ apiKey: key });
+            await ai.models.generateContent({
+                model: 'gemini-3-flash-preview',
+                contents: 'ping',
+            });
+            return true;
+        } catch (e) {
+            throw new Error("Gemini API Key không hợp lệ.");
+        }
+    } else if (provider === 'openai') {
+        try {
+            const res = await fetch('https://api.openai.com/v1/models', {
+                headers: { 'Authorization': `Bearer ${key}` }
+            });
+            return res.ok;
+        } catch (e) { return false; }
+    } else if (provider === 'elevenlabs') {
+        try {
+            const res = await fetch('https://api.elevenlabs.io/v1/user', {
+                headers: { 'xi-api-key': key }
+            });
+            return res.ok;
+        } catch (e) { return false; }
+    }
+    return false;
+};
 
 export const generateScript = async (params: GenerationParams, provider: AiProvider, model: string): Promise<string> => {
     const { title, outlineContent, targetAudience, styleOptions, keywords, formattingOptions, wordCount, scriptType, numberOfSpeakers, isDarkFrontiers } = params;
@@ -167,8 +120,11 @@ export const generateScript = async (params: GenerationParams, provider: AiProvi
             Mục tiêu: Tạo ra một trải nghiệm **Audio Cinema** gieo rắc nỗi sợ hãi.
 
             **TIÊU ĐỀ CHÍNH:** "${title}"
-            **NGÔN NGỮ KỊCH BẢN (NARRATION/DIALOGUE):** ${language}
-            **NGÔN NGỮ CÁC NHÃN KỸ THUẬT (HEADERS, AUDIO CUES, VISUAL SUGGESTIONS):** Phải luôn là Tiếng Việt.
+            **CHÍNH SÁCH NGÔN NGỮ (BẮT BUỘC):**
+            1. Lời dẫn chuyện (Narration) và Lời thoại (Dialogue): Phải dùng **${language}**.
+            2. Tên các phần (Section Headers): Phải dùng **Tiếng Việt**.
+            3. Chỉ dẫn âm thanh (Audio Cues): Phải dùng **Tiếng Việt**.
+            4. Gợi ý hình ảnh (Visual Suggestions): Phải dùng **Tiếng Việt**.
 
             **CẤU TRÚC DARK FRONTIERS (BẮT BUỘC):**
             1. **PHẦN MỞ ĐẦU (THE HOOK):** Ngôi thứ 3. Khách quan, lạnh lùng. Tóm tắt kết cục bi thảm để tạo sự điềm báo.
@@ -182,8 +138,8 @@ export const generateScript = async (params: GenerationParams, provider: AiProvi
             - TONE: Ominous, Gritty, Melancholic.
             - QUY TẮC: ĐỪNG nói "Tôi sợ". HÃY nói "Khẩu súng trong tay tôi cảm thấy vô dụng như một cành củi khô trước bóng tối".
 
-            **ĐỊNH DẠNG BẮT BUỘC:**
-            **[TÊN PHẦN - BẰNG TIẾNG VIỆT]**
+            **ĐỊNH DẠNG TRÌNH BÀY:**
+            ## [TÊN PHẦN - TIẾNG VIỆT]
             **Cues Âm thanh:** [Mô tả chi tiết âm thanh bằng Tiếng Việt]
             **Lời thoại / Dẫn chuyện (Bằng ${language}):** [Nội dung kịch bản]
             **Gợi ý Hình ảnh:** [Mô tả hình ảnh bằng Tiếng Việt, tập trung vào phong cách Sepia, Độ tương phản cao]
@@ -208,76 +164,26 @@ export const generateScript = async (params: GenerationParams, provider: AiProvi
 };
 
 export const generateScriptOutline = async (params: GenerationParams, provider: AiProvider, model: string): Promise<string> => {
-    const { title, outlineContent, targetAudience, wordCount, isDarkFrontiers } = params;
-    const language = targetAudience;
+    const { title, targetAudience, wordCount, isDarkFrontiers } = params;
     const prompt = `
         Bạn là chuyên gia biên kịch YouTube. Hãy tạo một dàn ý CHI TIẾT cho một video dài.
         Tiêu đề: "${title}"
-        Ngôn ngữ nội dung: ${language}
+        Ngôn ngữ nội dung: ${targetAudience}
         Ngôn ngữ tiêu đề phần và tóm tắt: Tiếng Việt.
         Độ dài mục tiêu: ${wordCount} từ.
         ${isDarkFrontiers ? "CHẾ ĐỘ: Dark Frontiers (Mở đầu, Khởi đầu, Vòng vây, Cao trào, Dấu vết)." : ""}
         
         YÊU CẦU:
-        Chia kịch bản thành các PHẦN rõ ràng. Mỗi phần hãy trình bày theo định dạng:
+        Chia kịch bản thành các PHẦN rõ ràng (ít nhất 5 phần). Mỗi phần hãy trình bày theo định dạng:
         ## [Tên Phần]
         **Tóm tắt nội dung:** [1-2 câu tóm tắt những gì sẽ xảy ra trong phần này]
     `;
 
     try {
         const outline = await callApi(prompt, provider, model);
-        return `### Dàn Ý Chi Tiết Cho Kịch Bản\n\nĐây là cấu trúc dự kiến cho video dài của bạn. Hãy nhấn nút "Bắt đầu tạo kịch bản đầy đủ" bên dưới để AI viết từng phần.\n\n---\n\n` + outline;
+        return `### Dàn Ý Chi Tiết Cho Kịch Bản\n\nĐây là cấu trúc dự kiến cho video dài của bạn. Hãy nhấn nút **"Tạo kịch bản đầy đủ"** bên dưới để AI viết từng phần chi tiết.\n\n---\n\n` + outline;
     } catch (error) {
         throw handleApiError(error, 'tạo dàn ý');
-    }
-};
-
-export const parseOutlineIntoSegments = (outline: string): string[] => {
-    // Splits by "## " which is the markdown header for sections
-    const segments = outline.split(/## /).filter(s => s.trim() !== '' && !s.includes('### Dàn Ý'));
-    return segments.map(s => '## ' + s.trim());
-};
-
-export const generateTopicSuggestions = async (theme: string, provider: AiProvider, model: string): Promise<TopicSuggestionItem[]> => {
-    if (!theme.trim()) return [];
-    const prompt = `Based on theme "${theme}", generate 5 specific YouTube ideas. Output JSON: {"suggestions": [{"title": "...", "outline": "..."}]}. Language: Vietnamese.`;
-
-    try {
-        const responseText = await callApi(prompt, provider, model, true);
-        return JSON.parse(responseText).suggestions;
-    } catch (error) {
-        throw handleApiError(error, 'tạo gợi ý chủ đề');
-    }
-};
-
-export const parseIdeasFromFile = async (fileContent: string, provider: AiProvider, model: string): Promise<TopicSuggestionItem[]> => {
-    if (!fileContent.trim()) return [];
-    const prompt = `Parse idea blocks into JSON array: [{"title": "...", "vietnameseTitle": "...", "outline": "..."}]. Extract original title, VN title, and outline. Return ONLY JSON array. Text: """${fileContent}"""`;
-    
-    try {
-        const responseText = await callApi(prompt, provider, model, true);
-        return JSON.parse(responseText);
-    } catch (error) {
-        throw handleApiError(error, 'phân tích tệp ý tưởng');
-    }
-};
-
-export const generateKeywordSuggestions = async (title: string, outlineContent: string, provider: AiProvider, model: string): Promise<string[]> => {
-    const prompt = `Generate 5 SEO keywords for title "${title}". Output JSON: {"keywords": ["...", "..."]}. Language: Vietnamese.`;
-    try {
-        const responseText = await callApi(prompt, provider, model, true);
-        return JSON.parse(responseText).keywords;
-    } catch (error) {
-        throw handleApiError(error, 'tạo gợi ý từ khóa');
-    }
-};
-
-export const reviseScript = async (originalScript: string, revisionInstruction: string, params: GenerationParams, provider: AiProvider, model: string): Promise<string> => {
-    const prompt = `Editor role. Revise script based on request: "${revisionInstruction}". Original: """${originalScript}""". Target words: ${params.wordCount}. Language: ${params.targetAudience}. Keep ${params.isDarkFrontiers ? 'Dark Frontiers horror' : 'original'} style. Return full revised script.`;
-    try {
-        return await callApi(prompt, provider, model);
-    } catch (error) {
-        throw handleApiError(error, 'sửa kịch bản');
     }
 };
 
@@ -298,12 +204,14 @@ export const generateScriptPart = async (fullOutline: string, previousPartsScrip
             **BỐI CẢNH CÁC PHẦN TRƯỚC (NẾU CÓ):**
             ${previousPartsScript.slice(-1000)}
 
+            **CHÍNH SÁCH NGÔN NGỮ:**
+            1. Lời thoại/Dẫn chuyện: **${targetAudience}**.
+            2. Audio Cues/Visual Suggestions/Headers: **Tiếng Việt**.
+
             **YÊU CẦU:**
-            - Ngôn ngữ nội dung: ${targetAudience}
-            - Ngôn ngữ nhãn (Cues Âm thanh, Gợi ý Hình ảnh...): Tiếng Việt
             - Phong cách: Dark Frontiers Horror (1st person POV, gritty, ominous).
-            - Độ dài phần này: Khoảng ${Math.round(parseInt(wordCount) / 5)} từ.
             - Trình bày đầy đủ: Tên phần, Cues âm thanh, Lời thoại, Gợi ý hình ảnh.
+            - Độ dài phần này: Khoảng ${Math.round(parseInt(wordCount) / 5)} từ.
         `;
     } else {
         prompt = `Write the content for this specific part of a YouTube script titled "${title}". 
@@ -320,111 +228,165 @@ export const generateScriptPart = async (fullOutline: string, previousPartsScrip
     }
 };
 
-export const extractDialogue = async (script: string, language: string, provider: AiProvider, model: string): Promise<Record<string, string>> => {
-    const prompt = `Extract spoken dialogue for TTS. Remove all cues/labels. Output JSON: {"Section Name": "Dialogue Text"}. Language: ${language}. Script: """${script}"""`;
+export const generateTopicSuggestions = async (title: string, provider: AiProvider, model: string): Promise<TopicSuggestionItem[]> => {
+    const prompt = `Based on the video title "${title}", suggest 5 unique YouTube video ideas. 
+    Return a JSON array of objects with keys: title, vietnameseTitle, outline.`;
     try {
-        const responseText = await callApi(prompt, provider, model, true);
-        return JSON.parse(responseText);
-    } catch (error) {
-        throw handleApiError(error, 'tách lời thoại');
+        const response = await callApi(prompt, provider, model);
+        const cleaned = response.replace(/```json|```/g, '').trim();
+        return JSON.parse(cleaned);
+    } catch (e) {
+        throw handleApiError(e, 'gợi ý chủ đề');
+    }
+};
+
+export const reviseScript = async (script: string, revisionPrompt: string, params: any, provider: AiProvider, model: string): Promise<string> => {
+    const prompt = `Revise this YouTube script based on: "${revisionPrompt}". 
+    Script:
+    ${script}`;
+    try {
+        return await callApi(prompt, provider, model);
+    } catch (e) {
+        throw handleApiError(e, 'sửa kịch bản');
+    }
+};
+
+export const extractDialogue = async (script: string, provider: AiProvider, model: string): Promise<Record<string, string>> => {
+    const prompt = `Extract spoken narration/dialogue from this script by section. 
+    Format as JSON: { "Section Title": "Extracted Text" }.
+    Script:
+    ${script}`;
+    try {
+        const response = await callApi(prompt, provider, model);
+        const cleaned = response.replace(/```json|```/g, '').trim();
+        return JSON.parse(cleaned);
+    } catch (e) {
+        throw handleApiError(e, 'tách lời thoại');
+    }
+};
+
+export const generateKeywordSuggestions = async (title: string, provider: AiProvider, model: string): Promise<string[]> => {
+    const prompt = `Suggest 10 relevant SEO keywords for a video titled "${title}". Return as comma-separated list.`;
+    try {
+        const response = await callApi(prompt, provider, model);
+        return response.split(',').map(k => k.trim());
+    } catch (e) {
+        throw handleApiError(e, 'gợi ý từ khóa');
     }
 };
 
 export const generateVisualPrompt = async (sceneDescription: string, provider: AiProvider, model: string): Promise<VisualPrompt> => {
-    const prompt = `Create descriptive visual prompt in English and VN translation for image generator. Focus on mood, lighting, style. JSON: {"english": "...", "vietnamese": "..."}. Input: """${sceneDescription}"""`;
+    const prompt = `Generate a detailed visual AI prompt for this scene: "${sceneDescription}". 
+    Return JSON: { "english": "...", "vietnamese": "..." }`;
     try {
-        const responseText = await callApi(prompt, provider, model, true);
-        return JSON.parse(responseText);
-    } catch (error) {
-        throw handleApiError(error, 'tạo prompt hình ảnh');
+        const response = await callApi(prompt, provider, model);
+        const cleaned = response.replace(/```json|```/g, '').trim();
+        return JSON.parse(cleaned);
+    } catch (e) {
+        throw handleApiError(e, 'tạo prompt hình ảnh');
     }
 };
 
 export const generateAllVisualPrompts = async (script: string, provider: AiProvider, model: string): Promise<AllVisualPromptsResult[]> => {
-    const prompt = `For each section in script, generate English and VN visual prompts. Output JSON array: [{"scene": "...", "english": "...", "vietnamese": "..."}]. Script: """${script}"""`;
+    const prompt = `Generate visual prompts for all major scenes in this script. 
+    Return JSON array of { scene, english, vietnamese }.
+    Script:
+    ${script}`;
     try {
-        const responseText = await callApi(prompt, provider, model, true);
-        return JSON.parse(responseText);
-    } catch (error) {
-        throw handleApiError(error, 'tạo tất cả prompt');
+        const response = await callApi(prompt, provider, model);
+        const cleaned = response.replace(/```json|```/g, '').trim();
+        return JSON.parse(cleaned);
+    } catch (e) {
+        throw handleApiError(e, 'tạo tất cả prompt');
     }
 };
 
-export const summarizeScriptForScenes = async (script: string, provider: AiProvider, model: string, config: SummarizeConfig): Promise<ScriptPartSummary[]> => {
-    const { scenarioType } = config;
-    const prompt = `Summarize script into visual scenes. Type: ${scenarioType}. Script: """${script}"""`;
+export const summarizeScriptForScenes = async (script: string, config: SummarizeConfig, provider: AiProvider, model: string): Promise<ScriptPartSummary[]> => {
+    const prompt = `Summarize the script into scenes based on config: ${JSON.stringify(config)}. 
+    Return JSON matching ScriptPartSummary structure.
+    Script:
+    ${script}`;
     try {
-        return parseVisualSceneAssistantOutput(await callApi(prompt, provider, model));
-    } catch (error) {
-        throw handleApiError(error, 'chuyển thể kịch bản');
+        const response = await callApi(prompt, provider, model);
+        const cleaned = response.replace(/```json|```/g, '').trim();
+        return JSON.parse(cleaned);
+    } catch (e) {
+        throw handleApiError(e, 'tóm tắt kịch bản');
     }
 };
 
-function parseVisualSceneAssistantOutput(responseText: string): ScriptPartSummary[] {
-    const scenes: SceneSummary[] = [];
-    const actualSceneBlocks = responseText.split(/(?=\*\*\[?(?:CẢNH QUAY|CẢNH|SCENE)\s*\d+\]?\*\*)/i).filter(block => /\*\*\[?(?:CẢNH QUAY|CẢNH|SCENE)\s*\d+\]?\*\*/i.test(block));
-    actualSceneBlocks.forEach((block, i) => {
-        const contentMatch = block.match(/(?:\* *)?\*\*(?:Phân tích kịch bản|Analysis|Script Analysis):\*\*\s*([\s\S]*?)\s*(?:\* *)?\*\*(?:Prompt Tạo hình ảnh\/Video|Prompt|Image\/Video Prompt):\*\*\s*([\s\S]*)/i);
-        if (contentMatch) {
-            scenes.push({ sceneNumber: i + 1, summary: contentMatch[1].trim(), imagePrompt: contentMatch[2].trim(), videoPrompt: contentMatch[2].trim() });
-        }
-    });
-    return scenes.length > 0 ? [{ partTitle: "Visual Storyboard", scenes }] : [];
-}
-
-export const suggestStyleOptions = async (title: string, outlineContent: string, provider: AiProvider, model: string): Promise<StyleOptions> => {
-    const prompt = `Suggest Expression and Style for title "${title}" from standard lists. JSON: {"expression": "...", "style": "..."}.`;
+export const suggestStyleOptions = async (title: string, provider: AiProvider, model: string): Promise<StyleOptions> => {
+    const prompt = `Suggest best Expression and Style for title: "${title}". 
+    Return JSON: { "expression": "...", "style": "..." }`;
     try {
-        const responseText = await callApi(prompt, provider, model, true);
-        return JSON.parse(responseText);
-    } catch (error) {
-        throw handleApiError(error, 'gợi ý phong cách');
+        const response = await callApi(prompt, provider, model);
+        const cleaned = response.replace(/```json|```/g, '').trim();
+        return JSON.parse(cleaned);
+    } catch (e) {
+        throw handleApiError(e, 'gợi ý phong cách');
     }
 };
 
-export const scoreScript = async (script: string, title: string, provider: AiProvider, model: string): Promise<string> => {
-    const prompt = `Expert review. Score script on scale 10 across 5 categories. Markdown format. Title: "${title}". Script: """${script}"""`;
+export const parseIdeasFromFile = async (content: string, provider: AiProvider, model: string): Promise<TopicSuggestionItem[]> => {
+    const prompt = `Extract video ideas from this text content. 
+    Return JSON array of { title, outline }.
+    Content:
+    ${content}`;
     try {
-        return await callApi(prompt, provider, model);
-    } catch (error) {
-        throw handleApiError(error, 'chấm điểm kịch bản');
+        const response = await callApi(prompt, provider, model);
+        const cleaned = response.replace(/```json|```/g, '').trim();
+        return JSON.parse(cleaned);
+    } catch (e) {
+        throw handleApiError(e, 'phân tích file');
     }
 };
 
 export const getElevenlabsVoices = async (): Promise<ElevenlabsVoice[]> => {
     const { apiKey, releaseKey } = await apiKeyManager.getAvailableKey('elevenlabs');
     try {
-        const response = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': apiKey } });
-        return (await response.json()).voices;
-    } catch (error) {
-        throw handleApiError(error, 'lấy giọng nói');
+        const res = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': apiKey } });
+        const data = await res.json();
+        return data.voices || [];
     } finally {
         releaseKey();
     }
-}
+};
 
 export const generateElevenlabsTts = async (text: string, voiceId: string): Promise<string> => {
     const { apiKey, releaseKey } = await apiKeyManager.getAvailableKey('elevenlabs');
     try {
-        const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+        const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'xi-api-key': apiKey, 'accept': 'audio/mpeg' },
+            headers: { 'Content-Type': 'application/json', 'xi-api-key': apiKey },
             body: JSON.stringify({ text, model_id: 'eleven_multilingual_v2' })
         });
-        if (!response.ok) throw new Error(await response.text());
-        return URL.createObjectURL(await response.blob());
-    } catch (error) {
-        throw handleApiError(error, 'tạo âm thanh');
+        const blob = await res.blob();
+        return URL.createObjectURL(blob);
     } finally {
         releaseKey();
     }
-}
+};
 
-export const generateSingleVideoPrompt = async (sceneSummary: string, scenarioType: ScenarioType, provider: AiProvider, model: string): Promise<string> => {
-    const prompt = `Create detailed video prompt for scene summary: "${sceneSummary}". Type: ${scenarioType}. English only.`;
+export const scoreScript = async (script: string, provider: AiProvider, model: string): Promise<string> => {
+    const prompt = `Provide a professional score (1-100) and feedback for this script.
+    Script:
+    ${script}`;
     try {
         return await callApi(prompt, provider, model);
-    } catch (error) {
-        throw handleApiError(error, 'tạo prompt video');
+    } catch (e) {
+        throw handleApiError(e, 'chấm điểm kịch bản');
     }
+};
+
+export const generateSingleVideoPrompt = async (scene: SceneSummary, config: SummarizeConfig, provider: AiProvider, model: string): Promise<string> => {
+    const prompt = `Generate a video prompt for this scene: "${scene.summary}". Scenario: ${config.scenarioType}.`;
+    try {
+        return await callApi(prompt, provider, model);
+    } catch (e) {
+        throw handleApiError(e, 'tạo prompt video');
+    }
+};
+
+export const parseOutlineIntoSegments = (outline: string): string[] => {
+    return outline.split(/(?=^## .*?$)/m).filter(s => s.trim() !== '' && !s.includes('### Dàn Ý'));
 };
