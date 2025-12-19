@@ -195,7 +195,16 @@ export const reviseScript = async (script: string, revisionPrompt: string, param
 };
 
 export const extractDialogue = async (script: string, provider: AiProvider, model: string): Promise<Record<string, string>> => {
-    const prompt = `Trích xuất lời dẫn SẠCH từ kịch bản sau (loại bỏ tiêu đề, chỉ lấy text lời thoại). JSON: { "Phần": "Nội dung" }.\nKỊCH BẢN:\n${script}`;
+    const prompt = `NHIỆM VỤ: Trích xuất lời thoại SẠCH (Spoken text) từ kịch bản sau.
+    QUY TẮC:
+    1. LOẠI BỎ hoàn toàn các chỉ dẫn kỹ thuật như [SFX], [Scene], [Visual], [Audio].
+    2. LOẠI BỎ hoàn toàn các mô tả cảnh quay hoặc hành động nhân vật.
+    3. CHỈ GIỮ LẠI những lời thoại mà người dẫn chương trình (Narrator) hoặc nhân vật (Survivor) thực sự nói.
+    4. Giữ nguyên cấu trúc các phần chính theo tiêu đề ##.
+    5. ĐỊNH DẠNG ĐẦU RA: JSON với cấu trúc { "Tên Phần": "Toàn bộ lời thoại của phần đó" }.
+    
+    KỊCH BẢN CẦN TRÍCH XUẤT:
+    ${script}`;
     try {
         const response = await callApi(prompt, provider, model);
         return JSON.parse(cleanJsonResponse(response));

@@ -372,6 +372,17 @@ const App: React.FC = () => {
     }
   }, [generatedScript, revisionPrompt, title, outlineContent, targetAudience, styleOptions, keywords, formattingOptions, wordCount, scriptParts, scriptType, numberOfSpeakers, isDarkFrontiers, aiProvider, selectedModel]);
 
+  // Helper function to clean text for word counting
+  const cleanTextForCount = (text: string): string => {
+    return text
+        .replace(/\[.*?\]/g, '') // Remove technical notes [SFX], [Scene]
+        .replace(/\*\*.*?\*\*/g, (match) => match.slice(2, -2)) // Unbold
+        .replace(/\*.*?\*/g, (match) => match.slice(1, -1)) // Unitalic
+        .replace(/#+.*$/gm, '') // Remove header lines
+        .replace(/\n+/g, ' ') // Replace newlines with spaces
+        .trim();
+  };
+
   const handleExtractDialogue = useCallback(async () => {
     if (!generatedScript) return;
     setIsExtracting(true);
@@ -381,31 +392,43 @@ const App: React.FC = () => {
     try {
         let dialogue: Record<string, string> = {};
 
-        // OPTIMIZATION: If script has clear Markdown headers (standard for DF clean scripts), parse locally
-        if (generatedScript.includes('## ')) {
-            const sections = generatedScript.split(/(?=^## .*?$)/m).filter(s => s.trim() !== '' && !s.includes('---'));
+        // OPTIMIZATION: Better Markdown parsing
+        const headerMatch = /^#+ (.*?)$/gm;
+        const sections = generatedScript.split(/(?=^## .*?$|^### .*?$)/m).filter(s => s.trim() !== '' && !s.includes('---'));
+        
+        if (sections.length > 1) {
             sections.forEach(s => {
                 const lines = s.split('\n');
-                const title = lines[0].replace(/^##\s+/, '').trim() || 'Phần không tên';
+                const titleLine = lines[0].trim();
+                const title = titleLine.replace(/^#+\s+/, '').trim() || 'Phần không tên';
                 const content = lines.slice(1).join('\n').trim();
-                if (content) dialogue[title] = content;
+                // Filter content to only spoken lines if it looks like a scene script
+                const filteredContent = content
+                    .split('\n')
+                    .filter(line => !line.trim().startsWith('[') && !line.trim().startsWith('Visual:') && !line.trim().startsWith('SFX:'))
+                    .join('\n')
+                    .trim();
+                if (filteredContent) dialogue[title] = filteredContent;
             });
         }
 
-        // FALLBACK: If local parsing yielded nothing, or it's not Markdown, use AI
-        if (Object.keys(dialogue).length === 0) {
+        // FALLBACK: Use AI if local parsing is insufficient or didn't catch enough
+        if (Object.keys(dialogue).length < 2) {
             dialogue = await extractDialogue(generatedScript, aiProvider, selectedModel);
         }
         
         setExtractedDialogue(dialogue);
         
-        // Calculate stats
-        const sections = Object.entries(dialogue).map(([title, text]) => ({
-            title,
-            count: text.split(/\s+/).filter(Boolean).length
-        }));
-        const total = sections.reduce((sum, s) => sum + s.count, 0);
-        setWordCountStats({ sections, total });
+        // Calculate stats accurately
+        const statsSections = Object.entries(dialogue).map(([title, text]) => {
+            const cleanText = cleanTextForCount(text);
+            return {
+                title,
+                count: cleanText.split(/\s+/).filter(Boolean).length
+            };
+        });
+        const total = statsSections.reduce((sum, s) => sum + s.count, 0);
+        setWordCountStats({ sections: statsSections, total });
         setHasExtractedDialogue(true);
     } catch (err) {
         setExtractionError(err instanceof Error ? err.message : 'Lỗi khi tách lời thoại.');
