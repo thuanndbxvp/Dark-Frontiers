@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ClipboardIcon } from './icons/ClipboardIcon';
+import { DownloadIcon } from './icons/DownloadIcon';
 import type { VisualPrompt } from '../types';
 
 interface VisualPromptModalProps {
@@ -88,6 +89,24 @@ const PromptItem: React.FC<{ prompt: VisualPrompt; index: number }> = ({ prompt,
 export const VisualPromptModal: React.FC<VisualPromptModalProps> = ({ isOpen, onClose, prompts, isLoading, error }) => {
   if (!isOpen) return null;
 
+  const handleDownloadTxt = () => {
+    if (!prompts) return;
+    // Chuyển đổi mỗi prompt thành một dòng duy nhất (loại bỏ xuống dòng bên trong prompt)
+    const content = prompts
+        .map(p => p.english.replace(/\r?\n|\r/g, ' ').replace(/\s+/g, ' ').trim())
+        .join('\n');
+        
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'dark-frontiers-prompts.txt';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div 
       className="fixed inset-0 bg-black bg-opacity-80 z-[60] flex justify-center items-center p-4 backdrop-blur-sm"
@@ -127,13 +146,25 @@ export const VisualPromptModal: React.FC<VisualPromptModalProps> = ({ isOpen, on
         </div>
 
         <div className="p-4 border-t border-border flex justify-end items-center gap-4 bg-primary/20 rounded-b-xl">
-            {isLoading && (
+            {isLoading ? (
                 <div className="flex-grow flex items-center gap-3 text-accent text-sm font-medium">
                     <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
                     Đang giải mã kịch bản và phác họa bối cảnh...
+                </div>
+            ) : (
+                <div className="flex-grow">
+                    {!error && prompts && prompts.length > 0 && (
+                        <button 
+                            onClick={handleDownloadTxt}
+                            className="flex items-center gap-2 text-xs bg-primary hover:bg-border text-text-secondary px-3 py-2 rounded-lg transition border border-border"
+                        >
+                            <DownloadIcon className="w-4 h-4" />
+                            <span>Tải .txt (Dành cho MJ/Leonardo)</span>
+                        </button>
+                    )}
                 </div>
             )}
             <button onClick={onClose} className="px-6 py-2 bg-accent hover:brightness-110 text-white font-bold rounded-lg transition-all shadow-lg shadow-accent/20 min-w-[100px]">

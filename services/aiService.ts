@@ -254,11 +254,17 @@ export const generateKeywordSuggestions = async (title: string, provider: AiProv
 };
 
 export const generateVisualPrompt = async (sceneDescription: string, provider: AiProvider, model: string): Promise<VisualPrompt[]> => {
-    const template = `Dark historical realism, late 18th–19th century atmosphere, muted sepia and earthy tones, low saturation color palette.
-Painterly oil painting style with antique illustration influence, soft diffused lighting, heavy mood and melancholic atmosphere.
-Textured old canvas look, subtle grain, realistic anatomy, detailed but restrained facial expressions.
-Cinematic composition, social realism aesthetic, sense of human hardship, suffering, and collective fate.
-No modern elements, no bright colors, no fantasy, no stylization, 16:9 aspect ratio.
+    const template = `19th century social realism painting style, dark historical realism.
+Muted sepia, brown and dirty earth tones, very low saturation.
+Rough painterly oil painting texture, visible brush strokes, aged canvas surface.
+Imperfect anatomy, weathered skin, signs of hardship and poverty.
+Flat, natural light, no cinematic lighting, no dramatic rim light.
+Somber, heavy atmosphere, quiet suffering, human fragility.
+Old illustration and engraving influence, documentary feeling, raw and unpolished.
+No beauty idealization, no fine art photography look.
+No modern aesthetics.
+Aspect ratio 16:9.
+
 [INSERT IMAGE CONTENT HERE]`;
 
     const prompt = `Bạn là chuyên gia tạo prompt hình ảnh cho Midjourney/Leonardo.

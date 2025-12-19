@@ -109,6 +109,7 @@ const App: React.FC = () => {
   const [isGeneratingVisualPrompt, setIsGeneratingVisualPrompt] = useState<boolean>(false);
   const [visualPromptError, setVisualPromptError] = useState<string | null>(null);
   const [loadingVisualPromptsParts, setLoadingVisualPromptsParts] = useState<Set<string>>(new Set());
+  const [isGeneratingAllSegmentPrompts, setIsGeneratingAllSegmentPrompts] = useState<boolean>(false);
 
   const [isAllVisualPromptsModalOpen, setIsAllVisualPromptsModalOpen] = useState<boolean>(false);
   const [allVisualPrompts, setAllVisualPrompts] = useState<AllVisualPromptsResult[] | null>(null);
@@ -216,6 +217,7 @@ const App: React.FC = () => {
     setFullOutlineText('');
     isStoppingRef.current = false;
     setLoadingVisualPromptsParts(new Set());
+    setIsGeneratingAllSegmentPrompts(false);
   };
 
   const handleGenerateScript = useCallback(async () => {
@@ -467,9 +469,6 @@ const App: React.FC = () => {
             next.set(scene, prompts);
             return next;
         });
-        // We only update the visualPrompts state (which controls current modal content)
-        // if this scene is the one currently intended for the modal.
-        // Actually for simplicity, we just update it. If user re-opened for same scene, it works.
         setVisualPrompts(prompts);
     } catch (err) {
         setVisualPromptError(err instanceof Error ? err.message : 'Lỗi tạo prompt hình ảnh.');
@@ -482,6 +481,73 @@ const App: React.FC = () => {
         });
     }
   }, [aiProvider, selectedModel, visualPromptsCache]);
+
+  const handleGenerateAllSegmentPrompts = useCallback(async () => {
+    if (!generatedScript) return;
+    const sections = generatedScript.split(/(?=^## .*?$|^### .*?$)/m).filter(s => s.trim() !== '' && s.trim().length > 50 && !s.includes("Dàn Ý Chi Tiết") && !s.includes("BẮT ĐẦU TẠO"));
+    
+    setIsGeneratingAllSegmentPrompts(true);
+    setNotification("Đang bắt đầu tạo hàng loạt prompt cho kịch bản...");
+
+    for (const section of sections) {
+        if (visualPromptsCache.has(section)) continue;
+
+        setLoadingVisualPromptsParts(prev => {
+            const next = new Set(prev);
+            next.add(section);
+            return next;
+        });
+
+        try {
+            const prompts = await generateVisualPrompt(section, aiProvider, selectedModel);
+            setVisualPromptsCache(prev => {
+                const next = new Map(prev);
+                next.set(section, prompts);
+                return next;
+            });
+        } catch (err) {
+            console.error("Lỗi khi tạo prompt cho đoạn:", section.substring(0, 50), err);
+        } finally {
+            setLoadingVisualPromptsParts(prev => {
+                const next = new Set(prev);
+                next.delete(section);
+                return next;
+            });
+        }
+    }
+
+    setIsGeneratingAllSegmentPrompts(false);
+    setNotification("Đã hoàn tất tạo toàn bộ prompt ảnh!");
+  }, [generatedScript, aiProvider, selectedModel, visualPromptsCache]);
+
+  const handleDownloadAllPrompts = useCallback(() => {
+    if (visualPromptsCache.size === 0) {
+        setError("Chưa có prompt nào được tạo để tải về.");
+        return;
+    }
+
+    // Flatten all visual prompt lists from cache
+    const allEnglishPrompts: string[] = [];
+    visualPromptsCache.forEach((prompts) => {
+        prompts.forEach(p => {
+            // Flatten internal newlines to single lines
+            const flat = p.english.replace(/\r?\n|\r/g, ' ').replace(/\s+/g, ' ').trim();
+            allEnglishPrompts.push(flat);
+        });
+    });
+
+    if (allEnglishPrompts.length === 0) return;
+
+    const blob = new Blob([allEnglishPrompts.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `All_Prompts_${title.replace(/\s+/g, '_')}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [visualPromptsCache, title]);
 
   const handleGenerateAllVisualPrompts = useCallback(async () => {
     if (!generatedScript) return;
@@ -719,6 +785,9 @@ const App: React.FC = () => {
                 onOpenLibrary={() => setIsLibraryOpen(true)} onSaveToLibrary={handleSaveToLibrary} hasSavedToLibrary={hasSavedToLibrary}
                 onExtractAndCount={handleExtractDialogue} wordCountStats={wordCountStats} isExtracting={isExtracting}
                 onOpenTtsModal={handleOpenTtsModal} onScoreScript={handleScoreScript} isScoring={isScoring}
+                onGenerateAllPrompts={handleGenerateAllSegmentPrompts}
+                onDownloadAllPrompts={handleDownloadAllPrompts}
+                isGeneratingAllPrompts={isGeneratingAllSegmentPrompts}
             />
         </div>
       </main>
