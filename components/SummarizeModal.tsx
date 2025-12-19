@@ -127,12 +127,14 @@ export const SummarizeModal: React.FC<SummarizeModalProps> = ({ isOpen, onClose,
 
         const scenesToGenerate: { scene: SceneSummary, partIndex: number }[] = [];
         summary.forEach((part, partIndex) => {
-            part.scenes.forEach(scene => {
-                const needsGeneration = scene.videoPrompt.startsWith('Prompt chưa được tạo.');
-                if (needsGeneration) {
-                    scenesToGenerate.push({ scene, partIndex });
-                }
-            });
+            if (part?.scenes && Array.isArray(part.scenes)) {
+                part.scenes.forEach(scene => {
+                    const needsGeneration = (scene?.videoPrompt || '').startsWith('Prompt chưa được tạo.');
+                    if (needsGeneration) {
+                        scenesToGenerate.push({ scene, partIndex });
+                    }
+                });
+            }
         });
 
         for (const { scene, partIndex } of scenesToGenerate) {
@@ -163,11 +165,13 @@ export const SummarizeModal: React.FC<SummarizeModalProps> = ({ isOpen, onClose,
 
         const scenesToRetry: { scene: SceneSummary, partIndex: number }[] = [];
         summary.forEach((part, partIndex) => {
-            part.scenes.forEach(scene => {
-                if (scene.videoPrompt.startsWith('LỖI:')) {
-                    scenesToRetry.push({ scene, partIndex });
-                }
-            });
+            if (part?.scenes && Array.isArray(part.scenes)) {
+                part.scenes.forEach(scene => {
+                    if ((scene?.videoPrompt || '').startsWith('LỖI:')) {
+                        scenesToRetry.push({ scene, partIndex });
+                    }
+                });
+            }
         });
 
         for (const { scene, partIndex } of scenesToRetry) {
@@ -189,15 +193,17 @@ export const SummarizeModal: React.FC<SummarizeModalProps> = ({ isOpen, onClose,
         let sceneCounter = 1;
 
         summary.forEach(part => {
-            part.scenes.forEach(scene => {
-                data.push([
-                    sceneCounter++,
-                    scene.summary,
-                    scene.imagePrompt,
-                    scene.videoPrompt,
-                    ''
-                ]);
-            });
+            if (part?.scenes && Array.isArray(part.scenes)) {
+                part.scenes.forEach(scene => {
+                    data.push([
+                        sceneCounter++,
+                        scene?.summary || '',
+                        scene?.imagePrompt || '',
+                        scene?.videoPrompt || '',
+                        ''
+                    ]);
+                });
+            }
         });
 
         const worksheet = XLSX.utils.aoa_to_sheet([header, ...data]);
@@ -214,14 +220,14 @@ export const SummarizeModal: React.FC<SummarizeModalProps> = ({ isOpen, onClose,
     const isGenerateButtonDisabled = !isAutoPrompts && (!promptCountInput || parseInt(promptCountInput) <= 0);
     
     const needsBulkGeneration = summary?.some(part => 
-        part.scenes.some(scene => 
-            scene.videoPrompt.startsWith('Prompt chưa được tạo.')
+        part?.scenes?.some(scene => 
+            (scene?.videoPrompt || '').startsWith('Prompt chưa được tạo.')
         )
     ) ?? false;
 
     const hasFailedPrompts = summary?.some(part =>
-        part.scenes.some(scene =>
-            scene.videoPrompt.startsWith('LỖI:')
+        part?.scenes?.some(scene =>
+            (scene?.videoPrompt || '').startsWith('LỖI:')
         )
     ) ?? false;
 
@@ -317,19 +323,19 @@ export const SummarizeModal: React.FC<SummarizeModalProps> = ({ isOpen, onClose,
                 <div className="space-y-8">
                     {summary.map((part, partIndex) => (
                         <div key={partIndex} className="bg-primary p-4 rounded-lg border border-border">
-                            <h3 className="text-lg font-bold text-accent mb-4 border-b border-border pb-2">{part.partTitle}</h3>
+                            <h3 className="text-lg font-bold text-accent mb-4 border-b border-border pb-2">{part?.partTitle || 'Phần không tên'}</h3>
                             <div className="space-y-4">
-                                {part.scenes.map(scene => {
-                                    const promptText = activeTab === 'video' ? scene.videoPrompt : scene.imagePrompt;
+                                {part?.scenes?.map(scene => {
+                                    const promptText = activeTab === 'video' ? (scene?.videoPrompt || '') : (scene?.imagePrompt || '');
                                     const isVideoPlaceholder = activeTab === 'video' && promptText.startsWith('Prompt chưa được tạo.');
                                     const isVideoError = activeTab === 'video' && promptText.startsWith('LỖI:');
-                                    const currentKey = `${partIndex}-${scene.sceneNumber}`;
+                                    const currentKey = `${partIndex}-${scene?.sceneNumber}`;
                                     const isGeneratingThisPrompt = generatingVideoPromptKey === currentKey;
-                                    const summaryLabel = `Cảnh ${scene.sceneNumber}`;
+                                    const summaryLabel = `Cảnh ${scene?.sceneNumber || '?'}`;
 
                                     return (
-                                        <div key={scene.sceneNumber} className="border-t border-border/50 pt-3">
-                                            <p className="text-sm text-text-secondary"><strong className="text-text-primary font-semibold">{summaryLabel}:</strong> {scene.summary}</p>
+                                        <div key={scene?.sceneNumber || Math.random()} className="border-t border-border/50 pt-3">
+                                            <p className="text-sm text-text-secondary"><strong className="text-text-primary font-semibold">{summaryLabel}:</strong> {scene?.summary || '(Không có tóm tắt)'}</p>
                                             <div className="mt-2">
                                                 <label className="block text-xs font-semibold text-text-secondary mb-1">Prompt {activeTab === 'image' ? 'Ảnh' : 'Video'} (Tiếng Anh)</label>
                                                 {isGeneratingThisPrompt && isVideoError ? (

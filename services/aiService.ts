@@ -134,7 +134,7 @@ Somber, heavy atmosphere, quiet suffering, human fragility.
 Old illustration and engraving influence, documentary feeling, raw and unpolished.
 No beauty idealization, no fine art photography look. No modern aesthetics.
 Aspect ratio 16:9.
-[IMAGE_CONTENT]`;
+[INSERT IMAGE CONTENT HERE]`;
 
 export const generateScript = async (params: GenerationParams, provider: AiProvider, model: string): Promise<string> => {
     const { title, targetAudience, wordCount, isDarkFrontiers } = params;
@@ -223,11 +223,10 @@ export const generateKeywordSuggestions = async (title: string, provider: AiProv
 };
 
 export const generateVisualPrompt = async (sceneDescription: string, provider: AiProvider, model: string): Promise<VisualPrompt[]> => {
-    const templateWithContent = SOCIAL_REALISM_TEMPLATE.replace('[IMAGE_CONTENT]', '[INSERT IMAGE CONTENT HERE]');
     const prompt = `NHIỆM VỤ: Tạo 4 prompt hình ảnh cực kỳ chi tiết cho Midjourney/Leonardo.
     PHONG CÁCH BẮT BUỘC: Social Realism 19th Century (U ám, sương mù, tranh sơn dầu thô ráp).
     MẪU CẤU TRÚC (BẮT BUỘC SỬ DỤNG):
-    ${templateWithContent}
+    ${SOCIAL_REALISM_TEMPLATE}
     
     Hãy thay thế [INSERT IMAGE CONTENT HERE] bằng nội dung hình ảnh cụ thể dựa trên kịch bản sau: "${sceneDescription}".
     Trả về JSON array: [ { "english": "FULL_PROMPT_STRING_WITH_TEMPLATE", "vietnamese": "Mô tả ngắn gọn cảnh bằng tiếng Việt" } ].`;
@@ -241,7 +240,7 @@ export const generateVisualPrompt = async (sceneDescription: string, provider: A
 export const generateAllVisualPrompts = async (script: string, provider: AiProvider, model: string): Promise<AllVisualPromptsResult[]> => {
     const prompt = `NHIỆM VỤ: Tạo prompts hình ảnh cho toàn bộ kịch bản.
     PHONG CÁCH: 19th century social realism.
-    CẤU TRÚC: ${SOCIAL_REALISM_TEMPLATE.replace('[IMAGE_CONTENT]', '{image_content}')}
+    CẤU TRÚC: ${SOCIAL_REALISM_TEMPLATE.replace('[INSERT IMAGE CONTENT HERE]', '{image_content}')}
     JSON array: { scene: "Đoạn kịch bản", english: "Prompt đầy đủ", vietnamese: "Dịch nghĩa" }.
     KỊCH BẢN:
     ${script}`;
@@ -252,16 +251,42 @@ export const generateAllVisualPrompts = async (script: string, provider: AiProvi
 };
 
 export const summarizeScriptForScenes = async (script: string, config: SummarizeConfig, provider: AiProvider, model: string): Promise<ScriptPartSummary[]> => {
-    const prompt = `Phân tích kịch bản thành cảnh quay. 
-    DÙNG PHONG CÁCH: 19th century social realism cho prompts.
-    MẪU PROMPT ẢNH (imagePrompt): ${SOCIAL_REALISM_TEMPLATE.replace('[IMAGE_CONTENT]', '{Mô tả chi tiết nội dung ảnh}')}
+    const prompt = `NHIỆM VỤ: Phân tích kịch bản thành các cảnh quay chi tiết.
+    PHONG CÁCH HÌNH ẢNH: 19th century social realism.
+    BẮT BUỘC SỬ DỤNG MẪU PROMPT NÀY cho trường 'imagePrompt':
+    ${SOCIAL_REALISM_TEMPLATE}
+    (Thay thế [INSERT IMAGE CONTENT HERE] bằng nội dung mô tả cụ thể cho từng cảnh)
+
+    YÊU CẦU ĐỊNH DẠNG: Trả về một mảng JSON các đối tượng ScriptPartSummary.
+    Cấu trúc mỗi ScriptPartSummary:
+    {
+        "partTitle": "Tên phần",
+        "scenes": [
+            {
+                "sceneNumber": 1,
+                "summary": "Tóm tắt ngắn gọn nội dung cảnh",
+                "imagePrompt": "FULL_PROMPT_STRING_FOLLOWING_TEMPLATE",
+                "videoPrompt": "Prompt chưa được tạo."
+            }
+        ]
+    }
     
-    JSON ScriptPartSummary.
-    KỊCH BẢN:\n${script}`;
+    KỊCH BẢN CẦN PHÂN TÍCH:\n${script}`;
+    
     try {
         const response = await callApi(prompt, provider, model);
-        return JSON.parse(cleanJsonResponse(response));
-    } catch (e) { throw handleApiError(e, 'tóm tắt kịch bản'); }
+        const cleaned = cleanJsonResponse(response);
+        const parsed = JSON.parse(cleaned);
+        
+        // Kiểm tra xem dữ liệu có phải là mảng không
+        if (!Array.isArray(parsed)) {
+            throw new Error("Dữ liệu AI trả về không đúng định dạng danh sách (Array).");
+        }
+        
+        return parsed;
+    } catch (e) { 
+        throw handleApiError(e, 'chuyển thể kịch bản (vui lòng thử lại với model mạnh hơn)'); 
+    }
 };
 
 export const suggestStyleOptions = async (title: string, provider: AiProvider, model: string): Promise<StyleOptions> => {
