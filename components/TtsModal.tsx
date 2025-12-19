@@ -34,7 +34,7 @@ const formatSrtTime = (seconds: number): string => {
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`;
 };
 
-// Logic tạo nội dung file SRT nâng cao: chia nhỏ câu và tính trọng số thời gian theo ký tự
+// Logic tạo nội dung file SRT nâng cao
 const generateSrtContent = (text: string, duration: number): string => {
     if (!text.trim() || duration <= 0) return "";
 
@@ -300,7 +300,7 @@ export const TtsModal: React.FC<TtsModalProps> = ({
         setIsGeneratingAll(true);
         for (const partTitle of parts) {
             const state = generationState[partTitle];
-            if (state?.audioUrl) continue; // Bỏ qua nếu đã có audio
+            if (state?.audioUrl) continue;
             await handleGenerateForPart(partTitle);
         }
         setIsGeneratingAll(false);
@@ -313,10 +313,11 @@ export const TtsModal: React.FC<TtsModalProps> = ({
             const state = generationState[partTitle];
             if (!state?.audioUrl) continue;
 
+            const paddedIndex = (i + 1).toString().padStart(2, '0');
             if (type === 'mp3') {
                 const link = document.createElement('a');
                 link.href = state.audioUrl;
-                link.download = `${(i + 1).toString().padStart(2, '0')}_${partTitle.replace(/\s+/g, '_')}.mp3`;
+                link.download = `${paddedIndex}_${partTitle.replace(/\s+/g, '_')}.mp3`;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
@@ -326,29 +327,29 @@ export const TtsModal: React.FC<TtsModalProps> = ({
                 const url = URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = `${(i + 1).toString().padStart(2, '0')}_${partTitle.replace(/\s+/g, '_')}.srt`;
+                link.download = `${paddedIndex}_${partTitle.replace(/\s+/g, '_')}.srt`;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
                 URL.revokeObjectURL(url);
             }
             
-            // Delay nhỏ để tránh trình duyệt chặn download hàng loạt
             await new Promise(r => setTimeout(r, 300));
         }
     };
 
-    const handleDownloadSrt = (partTitle: string) => {
+    const handleDownloadSrt = (partTitle: string, index: number) => {
         const state = generationState[partTitle];
         const text = editableDialogue[partTitle];
         if (!state || !state.duration || !text) return;
 
+        const paddedIndex = (index + 1).toString().padStart(2, '0');
         const srtContent = generateSrtContent(text, state.duration);
         const blob = new Blob([srtContent], { type: 'text/plain;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `${partTitle.replace(/\s+/g, '_')}.srt`;
+        link.download = `${paddedIndex}_${partTitle.replace(/\s+/g, '_')}.srt`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -491,12 +492,15 @@ export const TtsModal: React.FC<TtsModalProps> = ({
                     </div>
 
                     <div className="flex-grow bg-primary rounded-lg p-3 overflow-y-auto border border-border space-y-4">
-                        {Object.entries(editableDialogue).map(([partTitle, text]) => {
+                        {Object.entries(editableDialogue).map(([partTitle, text], index) => {
                             const state = generationState[partTitle] || { isLoading: false, audioUrl: null, duration: null, error: null };
+                            const paddedIndex = (index + 1).toString().padStart(2, '0');
                             return (
                                 <div key={partTitle} className="bg-secondary p-4 rounded-lg border border-border">
                                     <div className="flex justify-between items-center mb-2">
-                                        <label className="block text-sm font-semibold text-text-primary uppercase tracking-wide">{partTitle}</label>
+                                        <label className="block text-sm font-semibold text-text-primary uppercase tracking-wide">
+                                            <span className="text-accent mr-1">{index + 1}.</span> {partTitle}
+                                        </label>
                                         {state.audioUrl && (
                                             <span className="text-[10px] font-bold text-green-400 bg-green-400/10 px-1.5 py-0.5 rounded">HOÀN TẤT</span>
                                         )}
@@ -517,12 +521,16 @@ export const TtsModal: React.FC<TtsModalProps> = ({
                                         <div className="mt-3 space-y-2">
                                             <audio key={state.audioUrl} controls src={state.audioUrl} className="w-full h-10"></audio>
                                             <div className="grid grid-cols-2 gap-2">
-                                                <a href={state.audioUrl} download={`${partTitle.replace(/\s+/g, '_')}.mp3`} className="flex items-center justify-center gap-2 text-[10px] bg-primary hover:bg-primary/50 text-text-secondary font-semibold py-2 px-3 rounded-md transition border border-border">
+                                                <a 
+                                                    href={state.audioUrl} 
+                                                    download={`${paddedIndex}_${partTitle.replace(/\s+/g, '_')}.mp3`} 
+                                                    className="flex items-center justify-center gap-2 text-[10px] bg-primary hover:bg-primary/50 text-text-secondary font-semibold py-2 px-3 rounded-md transition border border-border"
+                                                >
                                                     <DownloadIcon className="w-3.5 h-3.5"/>
                                                     Tải MP3
                                                 </a>
                                                 <button 
-                                                    onClick={() => handleDownloadSrt(partTitle)}
+                                                    onClick={() => handleDownloadSrt(partTitle, index)}
                                                     className="flex items-center justify-center gap-2 text-[10px] bg-primary hover:bg-primary/50 text-accent font-semibold py-2 px-3 rounded-md transition border border-accent/30"
                                                 >
                                                     <DownloadIcon className="w-3.5 h-3.5"/>
