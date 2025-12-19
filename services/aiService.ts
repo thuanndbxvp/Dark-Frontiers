@@ -104,9 +104,14 @@ export const validateApiKey = async (key: string, provider: AiProvider): Promise
 const DARK_FRONTIERS_DNA = `
 Bạn là Content Officer cho kênh "Dark Frontiers", chuyên gia về Kinh dị Dã sử (Historical Fiction Horror).
 TRIẾT LÝ NỘI DUNG: "Chúng ta bán Nỗi sợ về những điều chưa biết núp bóng dưới vỏ bọc Lịch sử."
+
 1. ĐỊNH HƯỚNG NỘI DUNG: Niche: Sự kiện/Địa điểm có thật + Cryptids = Ác mộng.
 2. PHONG CÁCH & GIỌNG KỂ (AUDIO CINEMA): "Show, Don't Tell". Ominous, Gritty, Melancholic.
-3. QUY TẮC KỊCH BẢN SẠCH: Chỉ trả về văn bản kể chuyện, không chỉ dẫn kỹ thuật.
+3. QUY TẮC CẤU TRÚC (BẮT BUỘC): 
+   - Phải chia kịch bản thành 5 phần rõ ràng.
+   - MỖI PHẦN BẮT BUỘC PHẢI CÓ TIÊU ĐỀ bắt đầu bằng ký tự '## ' (Ví dụ: ## THE HOOK, ## THE SLOW BURN...).
+   - Tuyệt đối không gộp chung các phần.
+4. QUY TẮC KỊCH BẢN SẠCH: Chỉ trả về văn bản kể chuyện, không chỉ dẫn kỹ thuật [SFX], [Visual] hay [Audio].
 `;
 
 const SOCIAL_REALISM_TEMPLATE = `19th century social realism painting style, dark historical realism.
@@ -122,15 +127,43 @@ Aspect ratio 16:9.
 
 export const generateScript = async (params: GenerationParams, provider: AiProvider, model: string): Promise<string> => {
     const { title, outlineContent, targetAudience, wordCount, isDarkFrontiers } = params;
-    let prompt = isDarkFrontiers ? `${DARK_FRONTIERS_DNA} HÃY VIẾT KỊCH BẢN SẠCH CHO VIDEO: "${title}"\nNGÔN NGỮ: ${targetAudience}\nĐỘ ĐÀI MỤC TIÊU: ${wordCount} từ.\n${outlineContent ? `DÀN Ý GỢI Ý: ${outlineContent}` : ''}` 
-                               : `Viết kịch bản YouTube về "${title}". Ngôn ngữ: ${targetAudience}. Độ dài: ${wordCount} từ. KỊCH BẢN SẠCH.`;
+    
+    let prompt: string;
+    if (isDarkFrontiers) {
+        prompt = `${DARK_FRONTIERS_DNA}
+        HÃY VIẾT KỊCH BẢN SẠCH CHO VIDEO: "${title}"
+        NGÔN NGỮ: ${targetAudience}
+        ĐỘ ĐÀI MỤC TIÊU: ${wordCount} từ.
+        DÀN Ý GỢI Ý: ${outlineContent || 'Tự động xây dựng kịch bản kinh dị dã sử kịch tính.'}
+
+        YÊU CẦU ĐỊNH DẠNG NGHIÊM NGẶT:
+        - Sử dụng cấu trúc 5 giai đoạn của Dark Frontiers.
+        - Mỗi phần PHẢI bắt đầu bằng tiêu đề dòng riêng biệt dạng: ## [TÊN PHẦN].
+        - Nội dung kịch bản phải SẠCH hoàn toàn (chỉ có lời thoại/lời dẫn).`;
+    } else {
+        prompt = `Viết kịch bản YouTube về "${title}". 
+        Ngôn ngữ: ${targetAudience}. Độ dài: ${wordCount} từ. 
+        YÊU CẦU: Chia phần rõ ràng bằng tiêu đề '## ', loại bỏ chỉ dẫn kỹ thuật. KỊCH BẢN SẠCH.`;
+    }
+    
     try { return await callApi(prompt, provider, model); } catch (error) { throw handleApiError(error, 'tạo kịch bản'); }
 };
 
 export const generateScriptOutline = async (params: GenerationParams, provider: AiProvider, model: string): Promise<string> => {
     const { title, targetAudience, wordCount, isDarkFrontiers } = params;
-    let prompt = isDarkFrontiers ? `${DARK_FRONTIERS_DNA} Tạo dàn ý chi tiết 5 phần cho "${title}". Ngôn ngữ: ${targetAudience}.` 
-                               : `Tạo dàn ý YouTube "${title}". Ngôn ngữ: Tiếng Việt. Chia phần ##.`;
+    
+    let prompt: string;
+    if (isDarkFrontiers) {
+        prompt = `${DARK_FRONTIERS_DNA}
+        Tạo dàn ý chi tiết 5 phần (Hook, Slow Burn, Siege, Climax, Scar) cho "${title}".
+        Mỗi phần trong dàn ý PHẢI bắt đầu bằng dòng: ## [Tên phần]
+        Ngôn ngữ: ${targetAudience}. 
+        Mô tả ngắn gọn nội dung từng phần dưới mỗi tiêu đề ##.`;
+    } else {
+        prompt = `Tạo dàn ý YouTube cho "${title}". Ngôn ngữ: Tiếng Việt. 
+        BẮT BUỘC: Mỗi phần phải bắt đầu bằng '## [Tên phần]'.`;
+    }
+    
     try {
         const outline = await callApi(prompt, provider, model);
         return `### Dàn Ý Chi Tiết (Chuẩn bị tạo kịch bản sạch cho TTS)\n\n` + outline;
@@ -140,8 +173,26 @@ export const generateScriptOutline = async (params: GenerationParams, provider: 
 export const generateScriptPart = async (fullOutline: string, previousPartsScript: string, currentPartOutline: string, params: GenerationParams, provider: AiProvider, model: string): Promise<string> => {
     const { targetAudience, wordCount, isDarkFrontiers, title } = params;
     const estPartWords = Math.round(parseInt(wordCount) / 5);
-    let prompt = isDarkFrontiers ? `${DARK_FRONTIERS_DNA} VIẾT TIẾP PHẦN KỊCH BẢN: "${title}"\nDÀN Ý TỔNG: ${fullOutline}\nPHẦN ĐANG VIẾT: ${currentPartOutline}\nNỘI DUNG ĐÃ VIẾT TRƯỚC ĐÓ: ${previousPartsScript.slice(-2000)}\nĐộ dài: ${estPartWords} từ. Ngôn ngữ: ${targetAudience}.`
-                               : `Viết tiếp phần này cho kịch bản "${title}". Dàn ý: ${currentPartOutline}. Ngôn ngữ: ${targetAudience}. KỊCH BẢN SẠCH.`;
+    
+    let prompt: string;
+    if (isDarkFrontiers) {
+        prompt = `${DARK_FRONTIERS_DNA}
+        VIẾT TIẾP PHẦN KỊCH BẢN: "${title}"
+        DÀN Ý TỔNG: ${fullOutline}
+        PHẦN HIỆN TẠI CẦN VIẾT: ${currentPartOutline}
+        NỘI DUNG ĐÃ VIẾT TRƯỚC ĐÓ: ${previousPartsScript.slice(-2000)}
+
+        YÊU CẦU:
+        - BẮT BUỘC bắt đầu văn bản trả về bằng đúng tiêu đề phần có trong dàn ý (Ví dụ: ## THE HOOK).
+        - Độ dài: Khoảng ${estPartWords} từ.
+        - Ngôn ngữ: ${targetAudience}.
+        - KỊCH BẢN SẠCH 100%, không rác kỹ thuật.`;
+    } else {
+        prompt = `Viết tiếp phần này cho kịch bản "${title}". 
+        Dàn ý phần: ${currentPartOutline}. Ngôn ngữ: ${targetAudience}. 
+        BẮT BUỘC: Bắt đầu bằng tiêu đề '## '. KỊCH BẢN SẠCH.`;
+    }
+    
     try { return await callApi(prompt, provider, model); } catch (error) { throw handleApiError(error, 'tạo phần kịch bản'); }
 };
 
@@ -154,7 +205,9 @@ export const generateTopicSuggestions = async (title: string, provider: AiProvid
 };
 
 export const reviseScript = async (script: string, revisionPrompt: string, params: any, provider: AiProvider, model: string): Promise<string> => {
-    const prompt = `Chỉnh sửa kịch bản sau: "${revisionPrompt}". Đảm bảo KỊCH BẢN SẠCH và DNA Dark Frontiers.\nKịch bản:\n${script}`;
+    const prompt = `Chỉnh sửa kịch bản sau theo yêu cầu: "${revisionPrompt}". 
+    Đảm bảo KỊCH BẢN SẠCH và duy trì cấu trúc phần ## cũ nếu có thể. 
+    DNA Dark Frontiers.\nKịch bản:\n${script}`;
     try { return await callApi(prompt, provider, model); } catch (e) { throw handleApiError(e, 'sửa kịch bản'); }
 };
 
