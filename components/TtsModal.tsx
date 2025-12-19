@@ -22,8 +22,44 @@ interface TtsModalProps {
 interface GenerationStatus {
     isLoading: boolean;
     audioUrl: string | null;
+    duration: number | null; // Thêm trường duration để tính SRT
     error: string | null;
 }
+
+// Helper định dạng thời gian cho SRT: HH:mm:ss,mmm
+const formatSrtTime = (seconds: number): string => {
+    const date = new Date(0);
+    date.setSeconds(seconds);
+    const timeString = date.toISOString().substr(11, 8);
+    const milliseconds = Math.floor((seconds % 1) * 1000).toString().padStart(3, '0');
+    return `${timeString},${milliseconds}`;
+};
+
+// Logic tạo nội dung file SRT từ văn bản và thời lượng
+const generateSrtContent = (text: string, duration: number): string => {
+    // Tách văn bản thành các câu dựa trên dấu chấm, hỏi, cảm hoặc xuống dòng
+    const sentences = text.split(/([.!?\n]+)/).reduce((acc: string[], cur, idx) => {
+        if (idx % 2 === 0) {
+            if (cur.trim()) acc.push(cur.trim());
+        } else {
+            if (acc.length > 0) acc[acc.length - 1] += cur.trim();
+        }
+        return acc;
+    }, []).filter(s => s.trim().length > 0);
+
+    if (sentences.length === 0) return "";
+
+    const timePerSentence = duration / sentences.length;
+    let srt = "";
+
+    sentences.forEach((sentence, index) => {
+        const start = index * timePerSentence;
+        const end = (index + 1) * timePerSentence;
+        srt += `${index + 1}\n${formatSrtTime(start)} --> ${formatSrtTime(end)}\n${sentence}\n\n`;
+    });
+
+    return srt;
+};
 
 const VoiceItem: React.FC<{voice: ElevenlabsVoice, isSelected: boolean, onSelect: () => void, isSaved?: boolean, onDelete?: (e: React.MouseEvent) => void}> = ({ voice, isSelected, onSelect, isSaved, onDelete }) => {
     const audioRef = useRef<HTMLAudioElement>(null);
@@ -166,25 +202,53 @@ export const TtsModal: React.FC<TtsModalProps> = ({ isOpen, onClose, dialogue, v
 
     const handleGenerateForPart = async (partTitle: string) => {
         const finalVoiceId = selectedVoiceId || customVoiceId.trim();
-        if (!finalVoiceId || !editableDialogue[partTitle]) return;
+        const textToSpeak = editableDialogue[partTitle];
+        if (!finalVoiceId || !textToSpeak) return;
 
         setGenerationState(prev => ({
             ...prev,
-            [partTitle]: { isLoading: true, audioUrl: null, error: null }
+            [partTitle]: { isLoading: true, audioUrl: null, duration: null, error: null }
         }));
 
         try {
-            const url = await onGenerate(editableDialogue[partTitle], finalVoiceId);
-            setGenerationState(prev => ({
-                ...prev,
-                [partTitle]: { isLoading: false, audioUrl: url, error: null }
-            }));
+            const url = await onGenerate(textToSpeak, finalVoiceId);
+            
+            // Lấy thời lượng của file âm thanh để làm phụ đề
+            const tempAudio = new Audio(url);
+            tempAudio.onloadedmetadata = () => {
+                setGenerationState(prev => ({
+                    ...prev,
+                    [partTitle]: { 
+                        isLoading: false, 
+                        audioUrl: url, 
+                        duration: tempAudio.duration, 
+                        error: null 
+                    }
+                }));
+            };
         } catch (err) {
             setGenerationState(prev => ({
                 ...prev,
-                [partTitle]: { isLoading: false, audioUrl: null, error: err instanceof Error ? err.message : 'Lỗi không xác định' }
+                [partTitle]: { isLoading: false, audioUrl: null, duration: null, error: err instanceof Error ? err.message : 'Lỗi không xác định' }
             }));
         }
+    };
+
+    const handleDownloadSrt = (partTitle: string) => {
+        const state = generationState[partTitle];
+        const text = editableDialogue[partTitle];
+        if (!state || !state.duration || !text) return;
+
+        const srtContent = generateSrtContent(text, state.duration);
+        const blob = new Blob([srtContent], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${partTitle.replace(/\s+/g, '_')}.srt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
     };
 
     const isAnyPartLoading = (Object.values(generationState) as GenerationStatus[]).some(s => s.isLoading);
@@ -303,7 +367,7 @@ export const TtsModal: React.FC<TtsModalProps> = ({ isOpen, onClose, dialogue, v
                     <h3 className="text-lg font-semibold text-text-primary mb-3">2. Lời thoại & Kết quả</h3>
                     <div className="flex-grow bg-primary rounded-lg p-3 overflow-y-auto border border-border space-y-4">
                         {Object.entries(editableDialogue).map(([partTitle, text]) => {
-                            const state = generationState[partTitle] || { isLoading: false, audioUrl: null, error: null };
+                            const state = generationState[partTitle] || { isLoading: false, audioUrl: null, duration: null, error: null };
                             return (
                                 <div key={partTitle} className="bg-secondary p-4 rounded-lg border border-border">
                                     <label className="block text-sm font-semibold text-text-primary mb-2 uppercase tracking-wide">{partTitle}</label>
@@ -322,10 +386,19 @@ export const TtsModal: React.FC<TtsModalProps> = ({ isOpen, onClose, dialogue, v
                                     {state.audioUrl && (
                                         <div className="mt-3 space-y-2">
                                             <audio key={state.audioUrl} controls src={state.audioUrl} className="w-full h-10"></audio>
-                                            <a href={state.audioUrl} download={`${partTitle}.mp3`} className="flex items-center justify-center gap-2 w-full text-xs bg-primary hover:bg-primary/50 text-text-secondary font-semibold py-2 px-3 rounded-md transition border border-border">
-                                                <DownloadIcon className="w-4 h-4"/>
-                                                Tải xuống file MP3
-                                            </a>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <a href={state.audioUrl} download={`${partTitle.replace(/\s+/g, '_')}.mp3`} className="flex items-center justify-center gap-2 text-[10px] bg-primary hover:bg-primary/50 text-text-secondary font-semibold py-2 px-3 rounded-md transition border border-border">
+                                                    <DownloadIcon className="w-3.5 h-3.5"/>
+                                                    Tải MP3
+                                                </a>
+                                                <button 
+                                                    onClick={() => handleDownloadSrt(partTitle)}
+                                                    className="flex items-center justify-center gap-2 text-[10px] bg-primary hover:bg-primary/50 text-accent font-semibold py-2 px-3 rounded-md transition border border-accent/30"
+                                                >
+                                                    <DownloadIcon className="w-3.5 h-3.5"/>
+                                                    Tải phụ đề (.srt)
+                                                </button>
+                                            </div>
                                         </div>
                                     )}
                                     {state.error && <p className="text-red-400 text-xs mt-2 font-medium">LỖI: {state.error}</p>}

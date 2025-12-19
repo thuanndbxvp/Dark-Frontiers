@@ -90,22 +90,14 @@ export const validateApiKey = async (key: string, provider: AiProvider): Promise
     return false;
 };
 
-// --- DARK FRONTIERS DNA & NARRATIVE ARC CALIBRATION ---
 const DARK_FRONTIERS_DNA = `
-BẠN LÀ CONTENT OFFICER CHO KÊNH "DARK FRONTIERS" (KINH DỊ DÃ SỬ). 
-BẮT BUỘC TUÂN THỦ CƠ CHẾ CĂNG THẲNG (TENSION CURVE):
-
-1. CẤU TRÚC CHIẾN THUẬT (THE NARRATIVE ARC):
-   - ## THE HOOK (0-15s): ĐỈNH CAO GIẢ (FAKE PEAK). Phải đưa ra kết quả tàn khốc ngay lập tức. Ngôi thứ 3 (Narrator). Mô tả bằng chứng vật lý (súng bị bẻ cong, xác chết không máu...). Kết thúc bằng CTA Subscribe.
-   - ## THE BODY (SLOW BURN & SIEGE): ĐÂY LÀ PHẦN QUAN TRỌNG NHẤT. Bắt buộc ngôi thứ 1 ("TÔI"). Nhân vật lịch sử cụ thể (KHÔNG DÙNG TÊN "ELIAS"). Phải kéo dài sự tra tấn tâm lý. Đừng kể chuyện, hãy cho khán giả ngửi thấy mùi máu, nghe thấy tiếng cào xước ngoài cửa gỗ. Sự căng thẳng leo dốc chậm rãi nhưng ngạt thở.
-   - ## THE MONSTER (THE CLIMAX): Đỉnh cao thật sự. Quái vật không lộ diện ngay mà đùa giỡn, bắt chước tiếng người thân để phá hủy tinh thần nhân vật trước khi tấn công vật lý.
-   - ## THE OUTRO: Nhân vật sống sót nhưng tâm hồn đã chết. Kết luận mang tính triết lý u ám về sự vô vọng của con người trước bóng tối dã sử.
-
-2. TRIẾT LÝ VIẾT: 
-   - SHOW, DON'T TELL: Thay vì nói "Trời rất lạnh", hãy nói "Hơi thở của tôi đóng băng ngay khi vừa thoát khỏi lồng ngực".
-   - TẬP TRUNG GIÁC QUAN: Âm thanh (tiếng bước chân trên lá khô), Mùi vị (mùi lưu huỳnh, mùi rêu ẩm mốc).
-   - PHONG CÁCH: Ominous, Gritty, Melancholic, Psychological Horror.
-   - TUYỆT ĐỐI KHÔNG VIẾT RÁC KỸ THUẬT [SFX], [Visual] TRONG KỊCH BẢN.
+Bạn là Content Officer cho kênh "Dark Frontiers", chuyên gia về Kinh dị Dã sử.
+TRIẾT LÝ: Bán nỗi sợ núp bóng lịch sử.
+PHONG CÁCH: Ominous, Gritty, Melancholic.
+QUY TẮC CẤU TRÚC (BẮT BUỘC):
+- Phải chia kịch bản thành các phần rõ ràng.
+- MỖI PHẦN PHẢI BẮT ĐẦU BẰNG TIÊU ĐỀ: ## [TÊN PHẦN] (Ví dụ: ## THE HOOK).
+- Tuyệt đối không viết rác kỹ thuật [SFX], [Visual].
 `;
 
 const SOCIAL_REALISM_TEMPLATE = `19th century social realism painting style, dark historical realism.
@@ -120,18 +112,16 @@ Aspect ratio 16:9.
 [INSERT IMAGE CONTENT HERE]`;
 
 export const generateScript = async (params: GenerationParams, provider: AiProvider, model: string): Promise<string> => {
-    const { title, targetAudience, wordCount, isDarkFrontiers } = params;
-    let prompt = isDarkFrontiers 
-        ? `${DARK_FRONTIERS_DNA}\nVIẾT KỊCH BẢN THEO BIỂU ĐỒ CĂNG THẲNG LEO DỐC CHO: "${title}". NGÔN NGỮ: ${targetAudience}. ĐỘ DÀI: ${wordCount} từ.\nLƯU Ý: Phần Body phải kéo dài sự tra tấn tâm lý và dùng ngôi thứ nhất.`
-        : `Viết kịch bản YouTube về "${title}". Ngôn ngữ: ${targetAudience}. Chia phần ##. KỊCH BẢN SẠCH.`;
+    const { title, outlineContent, targetAudience, wordCount, isDarkFrontiers } = params;
+    let prompt = isDarkFrontiers ? `${DARK_FRONTIERS_DNA} HÃY VIẾT KỊCH BẢN SẠCH CHO: "${title}". NGÔN NGỮ: ${targetAudience}. ĐỘ DÀI: ${wordCount} từ. BẮT BUỘC chia phần ##.` 
+                               : `Viết kịch bản YouTube về "${title}". Ngôn ngữ: ${targetAudience}. Chia phần ##. KỊCH BẢN SẠCH.`;
     try { return await callApi(prompt, provider, model); } catch (error) { throw handleApiError(error, 'tạo kịch bản'); }
 };
 
 export const generateScriptOutline = async (params: GenerationParams, provider: AiProvider, model: string): Promise<string> => {
     const { title, targetAudience, isDarkFrontiers } = params;
-    let prompt = isDarkFrontiers 
-        ? `${DARK_FRONTIERS_DNA}\nTạo dàn ý 4 phần đúng cấu trúc Narrative Arc: ## THE HOOK (Fake Peak), ## THE BODY (Slow Burn & Siege), ## THE MONSTER (Climax), ## THE OUTRO cho chủ đề: "${title}". Ngôn ngữ: ${targetAudience}.` 
-        : `Tạo dàn ý YouTube cho "${title}". Chia phần ##.`;
+    let prompt = isDarkFrontiers ? `${DARK_FRONTIERS_DNA} Tạo dàn ý 5 phần ## cho "${title}". Ngôn ngữ: ${targetAudience}.` 
+                               : `Tạo dàn ý YouTube cho "${title}". Chia phần ##.`;
     try {
         const outline = await callApi(prompt, provider, model);
         return `### Dàn Ý Chi Tiết (Chuẩn bị tạo kịch bản sạch cho TTS)\n\n` + outline;
@@ -139,25 +129,10 @@ export const generateScriptOutline = async (params: GenerationParams, provider: 
 };
 
 export const generateScriptPart = async (fullOutline: string, previousPartsScript: string, currentPartOutline: string, params: GenerationParams, provider: AiProvider, model: string): Promise<string> => {
-    const { targetAudience, isDarkFrontiers, title } = params;
-    
-    let specificInstruction = "";
-    if (isDarkFrontiers) {
-        if (currentPartOutline.toUpperCase().includes("HOOK")) {
-            specificInstruction = "Giai đoạn FAKE PEAK: Tạo cú sốc ngay lập tức bằng hiện trường tàn khốc. POV: Ngôi thứ 3 (Narrator).";
-        } else if (currentPartOutline.toUpperCase().includes("BODY")) {
-            specificInstruction = "Giai đoạn SLOW BURN & SIEGE: Đây là phần cốt lõi. Bắt buộc ngôi thứ 1 'Tôi'. Phải kéo dài sự tra tấn tâm lý, mô tả chi tiết âm thanh và mùi vị. Sự căng thẳng phải leo dốc từ từ nhưng ngạt thở. Đừng cho quái vật xuất hiện ngay.";
-        } else if (currentPartOutline.toUpperCase().includes("MONSTER")) {
-            specificInstruction = "Giai đoạn THE CLIMAX: Đỉnh điểm căng thẳng. Quái vật đùa giỡn bằng tâm lý (bắt chước giọng nói) trước khi lộ diện. POV: Ngôi thứ 1.";
-        } else {
-            specificInstruction = "Giai đoạn OUTRO: Melancholic & Triết lý u ám. POV: Ngôi thứ 1.";
-        }
-    }
-
-    let prompt = isDarkFrontiers 
-        ? `${DARK_FRONTIERS_DNA}\nVIẾT TIẾP PHẦN KỊCH BẢN: "${currentPartOutline}".\nCHỦ ĐỀ: ${title}.\nCHỈ DẪN ARC: ${specificInstruction}\nNGÔN NGỮ: ${targetAudience}.\nBẮT BUỘC BẮT ĐẦU BẰNG TIÊU ĐỀ ##.`
-        : `Viết tiếp phần này cho kịch bản "${title}". BẮT BUỘC bắt đầu bằng ##.`;
-    
+    const { targetAudience, wordCount, isDarkFrontiers, title } = params;
+    const estPartWords = Math.round(parseInt(wordCount) / 5);
+    let prompt = isDarkFrontiers ? `${DARK_FRONTIERS_DNA} VIẾT TIẾP PHẦN KỊCH BẢN: "${title}". BẮT BUỘC BẮT ĐẦU BẰNG TIÊU ĐỀ ##. Phần: ${currentPartOutline}. Ngôn ngữ: ${targetAudience}.`
+                               : `Viết tiếp phần này cho kịch bản "${title}". BẮT BUỘC bắt đầu bằng ##.`;
     try { return await callApi(prompt, provider, model); } catch (error) { throw handleApiError(error, 'tạo phần kịch bản'); }
 };
 
@@ -170,7 +145,7 @@ export const generateTopicSuggestions = async (title: string, provider: AiProvid
 };
 
 export const reviseScript = async (script: string, revisionPrompt: string, params: any, provider: AiProvider, model: string): Promise<string> => {
-    const prompt = `Chỉnh sửa kịch bản: "${revisionPrompt}". \nLƯU Ý: Nếu là Dark Frontiers, tuyệt đối giữ đúng POV và cấu trúc leo dốc căng thẳng.\nKịch bản:\n${script}`;
+    const prompt = `Chỉnh sửa kịch bản: "${revisionPrompt}". Giữ cấu trúc ##.\nKịch bản:\n${script}`;
     try { return await callApi(prompt, provider, model); } catch (e) { throw handleApiError(e, 'sửa kịch bản'); }
 };
 
@@ -327,13 +302,7 @@ export const generateElevenlabsTts = async (text: string, voiceId: string): Prom
 };
 
 export const scoreScript = async (script: string, provider: AiProvider, model: string): Promise<string> => {
-    const prompt = `Bạn là Content Officer của Dark Frontiers. Hãy chấm điểm kịch bản này dựa trên DNA mới:
-    1. Cấu trúc Narrative Arc (Hook giả -> Slow Burn -> Climax)?
-    2. Ngôi kể: Hook (3rd POV), Body (1st POV "Tôi")?
-    3. Sensory Details (Âm thanh, mùi vị)?
-    4. Kéo dài phần Slow Burn & Siege đầy ngạt thở?
-    5. Show, Don't Tell?
-    Hãy đưa ra nhận xét khắt khe.`;
+    const prompt = `Chấm điểm DNA Dark Frontiers cho kịch bản này.`;
     try { return await callApi(prompt, provider, model); } catch (e) { throw handleApiError(e, 'chấm điểm kịch bản'); }
 };
 
