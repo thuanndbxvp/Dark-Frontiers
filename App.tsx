@@ -244,7 +244,6 @@ const App: React.FC = () => {
     try {
       const isLongScript = parseInt(finalWordCount, 10) >= 1000;
       if (isLongScript) {
-        // Giai đoạn 1: Tạo dàn ý chi tiết
         const outline = await generateScriptOutline(params, aiProvider, selectedModel);
         setGeneratedScript(outline);
         setFullOutlineText(outline);
@@ -314,6 +313,184 @@ const App: React.FC = () => {
     }
   }, [isGeneratingSequentially, currentPartIndex, outlineParts, title, outlineContent, targetAudience, styleOptions, keywords, formattingOptions, wordCount, scriptParts, scriptType, numberOfSpeakers, lengthType, videoDuration, aiProvider, selectedModel, isDarkFrontiers, fullOutlineText, generatedScript]);
 
+  const handleReviseScript = useCallback(async () => {
+    if (!generatedScript || !revisionPrompt.trim()) return;
+    setIsLoading(true);
+    setError(null);
+    
+    const params: GenerationParams = { 
+        title, outlineContent, targetAudience, styleOptions, keywords, formattingOptions, 
+        wordCount, scriptParts, scriptType, numberOfSpeakers, isDarkFrontiers 
+    };
+
+    try {
+        const revised = await reviseScript(generatedScript, revisionPrompt, params, aiProvider, selectedModel);
+        setGeneratedScript(revised);
+        setRevisionCount(prev => prev + 1);
+        setRevisionPrompt('');
+    } catch (err) {
+        setError(err instanceof Error ? err.message : 'Lỗi khi sửa kịch bản.');
+    } finally {
+        setIsLoading(false);
+    }
+  }, [generatedScript, revisionPrompt, title, outlineContent, targetAudience, styleOptions, keywords, formattingOptions, wordCount, scriptParts, scriptType, numberOfSpeakers, isDarkFrontiers, aiProvider, selectedModel]);
+
+  const handleExtractDialogue = useCallback(async () => {
+    if (!generatedScript) return;
+    setIsExtracting(true);
+    setIsDialogueModalOpen(true);
+    try {
+        const dialogue = await extractDialogue(generatedScript, aiProvider, selectedModel);
+        setExtractedDialogue(dialogue);
+        
+        // Calculate stats
+        const sections = Object.entries(dialogue).map(([title, text]) => ({
+            title,
+            count: text.split(/\s+/).filter(Boolean).length
+        }));
+        const total = sections.reduce((sum, s) => sum + s.count, 0);
+        setWordCountStats({ sections, total });
+        setHasExtractedDialogue(true);
+    } catch (err) {
+        setExtractionError(err instanceof Error ? err.message : 'Lỗi khi tách lời thoại.');
+    } finally {
+        setIsExtracting(false);
+    }
+  }, [generatedScript, aiProvider, selectedModel]);
+
+  const handleScoreScript = useCallback(async () => {
+    if (!generatedScript) return;
+    setIsScoring(true);
+    setIsScoreModalOpen(true);
+    try {
+        const score = await scoreScript(generatedScript, aiProvider, selectedModel);
+        setScriptScore(score);
+    } catch (err) {
+        setScoringError(err instanceof Error ? err.message : 'Lỗi khi chấm điểm.');
+    } finally {
+        setIsScoring(false);
+    }
+  }, [generatedScript, aiProvider, selectedModel]);
+
+  const handleSummarizeScript = useCallback(async (config: SummarizeConfig) => {
+    if (!generatedScript) return;
+    setIsSummarizing(true);
+    try {
+        const sum = await summarizeScriptForScenes(generatedScript, config, aiProvider, selectedModel);
+        setSummarizedScript(sum);
+        setHasSummarizedScript(true);
+    } catch (err) {
+        setSummarizationError(err instanceof Error ? err.message : 'Lỗi khi tóm tắt.');
+    } finally {
+        setIsSummarizing(false);
+    }
+  }, [generatedScript, aiProvider, selectedModel]);
+
+  const handleGenerateVisualPrompt = useCallback(async (scene: string) => {
+    try {
+        const prompt = await generateVisualPrompt(scene, aiProvider, selectedModel);
+        setVisualPromptsCache(prev => {
+            const next = new Map(prev);
+            next.set(scene, prompt);
+            return next;
+        });
+        setVisualPrompt(prompt);
+        setIsVisualPromptModalOpen(true);
+    } catch (err) {
+        setError(err instanceof Error ? err.message : 'Lỗi tạo prompt hình ảnh.');
+    }
+  }, [aiProvider, selectedModel]);
+
+  const handleGenerateAllVisualPrompts = useCallback(async () => {
+    if (!generatedScript) return;
+    setIsGeneratingAllVisualPrompts(true);
+    setIsAllVisualPromptsModalOpen(true);
+    try {
+        const prompts = await generateAllVisualPrompts(generatedScript, aiProvider, selectedModel);
+        setAllVisualPrompts(prompts);
+        setHasGeneratedAllVisualPrompts(true);
+    } catch (err) {
+        setAllVisualPromptsError(err instanceof Error ? err.message : 'Lỗi tạo toàn bộ prompt.');
+    } finally {
+        setIsGeneratingAllVisualPrompts(false);
+    }
+  }, [generatedScript, aiProvider, selectedModel]);
+
+  const handleSuggestStyle = useCallback(async () => {
+    if (!title.trim()) return;
+    setIsSuggestingStyle(true);
+    try {
+        const suggested = await suggestStyleOptions(title, aiProvider, selectedModel);
+        setStyleOptions(suggested);
+        setHasSuggestedStyle(true);
+    } catch (err) {
+        setStyleSuggestionError('Lỗi gợi ý phong cách.');
+    } finally {
+        setIsSuggestingStyle(false);
+    }
+  }, [title, aiProvider, selectedModel]);
+
+  const handleGenerateKeywordSuggestionsLocal = useCallback(async () => {
+    if (!title.trim()) return;
+    setIsSuggestingKeywords(true);
+    try {
+        const kws = await generateKeywordSuggestions(title, aiProvider, selectedModel);
+        setKeywordSuggestions(kws);
+        setHasGeneratedKeywordSuggestions(true);
+    } catch (err) {
+        setKeywordSuggestionError('Lỗi gợi ý từ khóa.');
+    } finally {
+        setIsSuggestingKeywords(false);
+    }
+  }, [title, aiProvider, selectedModel]);
+
+  const handleParseFileLocal = useCallback(async (content: string) => {
+    setIsParsing(true);
+    try {
+        const ideas = await parseIdeasFromFile(content, aiProvider, selectedModel);
+        setUploadedIdeas(ideas);
+    } catch (err) {
+        setParsingError('Lỗi đọc file ý tưởng.');
+    } finally {
+        setIsParsing(false);
+    }
+  }, [aiProvider, selectedModel]);
+
+  const handleOpenTtsModal = useCallback(async () => {
+    setIsTtsModalOpen(true);
+    if (ttsVoices.length === 0) {
+        setIsFetchingTtsVoices(true);
+        try {
+            const voices = await getElevenlabsVoices();
+            setTtsVoices(voices);
+        } catch (err) {
+            setTtsModalError('Lỗi tải danh sách giọng nói.');
+        } finally {
+            setIsFetchingTtsVoices(false);
+        }
+    }
+  }, [ttsVoices]);
+
+  const handleGenerateTtsLocal = async (text: string, voiceId: string) => {
+    return await generateElevenlabsTts(text, voiceId);
+  };
+
+  const handleGenerateVideoPromptLocal = async (scene: SceneSummary, partIndex: number, config: SummarizeConfig) => {
+    try {
+        const videoPrompt = await generateSingleVideoPrompt(scene, config, aiProvider, selectedModel);
+        setSummarizedScript(prev => {
+            if (!prev) return null;
+            const next = [...prev];
+            next[partIndex].scenes = next[partIndex].scenes.map(s => 
+                s.sceneNumber === scene.sceneNumber ? { ...s, videoPrompt } : s
+            );
+            return next;
+        });
+    } catch (err) {
+        throw err;
+    }
+  };
+
   const handleSaveApiKeys = (keysToSave: Record<AiProvider, string[]>) => setApiKeys(keysToSave);
   const handleSaveToLibrary = useCallback(() => {
     if (!generatedScript.trim() || !title.trim()) return;
@@ -324,11 +501,13 @@ const App: React.FC = () => {
     localStorage.setItem('yt-script-library', JSON.stringify(updatedLibrary));
     setHasSavedToLibrary(true);
   }, [generatedScript, title, outlineContent, library]);
+
   const handleDeleteScript = useCallback((id: number) => {
     const updatedLibrary = library.filter(item => item.id !== id);
     setLibrary(updatedLibrary);
     localStorage.setItem('yt-script-library', JSON.stringify(updatedLibrary));
   }, [library]);
+
   const handleLoadScript = useCallback((item: LibraryItem) => {
     resetCachesAndStates();
     setTitle(item.title);
@@ -337,10 +516,12 @@ const App: React.FC = () => {
     setHasSavedToLibrary(true);
     setIsLibraryOpen(false);
   }, []);
+
   const handleSaveIdea = useCallback((ideaToSave: TopicSuggestionItem) => {
     if (savedIdeas.some(idea => idea.title === ideaToSave.title)) return;
     setSavedIdeas(prev => [{ id: Date.now(), title: ideaToSave.title, vietnameseTitle: ideaToSave.vietnameseTitle, outline: ideaToSave.outline }, ...prev]);
   }, [savedIdeas]);
+
   const handleGenerateSuggestions = useCallback(async () => {
     if (!title.trim()) return;
     setIsSuggesting(true);
@@ -370,19 +551,11 @@ const App: React.FC = () => {
                         setThemeColor('#f59e0b');
                         setStyleOptions({ expression: 'Ominous', style: 'Cinematic Horror' });
                         setTargetAudience('English');
-                        setFormattingOptions(prev => ({
-                            ...prev,
-                            bullets: false,
-                            bold: false
-                        }));
+                        setFormattingOptions(prev => ({ ...prev, bullets: false, bold: false }));
                     } else {
                         setThemeColor('#38bdf8');
                         setTargetAudience(LANGUAGE_OPTIONS[0].value);
-                        setFormattingOptions(prev => ({
-                            ...prev,
-                            bullets: true,
-                            bold: true
-                        }));
+                        setFormattingOptions(prev => ({ ...prev, bullets: true, bold: true }));
                     }
                 }}
                 className={`px-4 py-2 rounded-lg font-bold text-xs transition-all flex items-center gap-2 border ${isDarkFrontiers ? 'bg-amber-900/40 text-amber-500 border-amber-500 shadow-lg shadow-amber-900/20' : 'bg-secondary text-text-secondary border-border hover:text-text-primary'}`}
@@ -416,13 +589,13 @@ const App: React.FC = () => {
             wordCount={wordCount} setWordCount={setWordCount}
             scriptParts={scriptParts} setScriptParts={setScriptParts}
             onGenerate={handleGenerateScript} isLoading={isLoading || !hasApiKey}
-            onGenerateKeywordSuggestions={() => {}} isSuggestingKeywords={false} keywordSuggestions={[]} keywordSuggestionError={null} hasGeneratedKeywordSuggestions={false}
+            onGenerateKeywordSuggestions={handleGenerateKeywordSuggestionsLocal} isSuggestingKeywords={isSuggestingKeywords} keywordSuggestions={keywordSuggestions} keywordSuggestionError={keywordSuggestionError} hasGeneratedKeywordSuggestions={hasGeneratedKeywordSuggestions}
             scriptType={scriptType} setScriptType={setScriptType}
             numberOfSpeakers={numberOfSpeakers} setNumberOfSpeakers={setNumberOfSpeakers}
-            onSuggestStyle={() => {}} isSuggestingStyle={false} styleSuggestionError={null} hasSuggestedStyle={false}
+            onSuggestStyle={handleSuggestStyle} isSuggestingStyle={isSuggestingStyle} styleSuggestionError={styleSuggestionError} hasSuggestedStyle={hasSuggestedStyle}
             lengthType={lengthType} setLengthType={setLengthType} videoDuration={videoDuration} setVideoDuration={setVideoDuration}
             savedIdeas={savedIdeas} onSaveIdea={handleSaveIdea} onOpenSavedIdeasModal={() => setIsSavedIdeasModalOpen(true)}
-            onParseFile={() => {}} isParsingFile={false} parsingFileError={null} uploadedIdeas={[]}
+            onParseFile={handleParseFileLocal} isParsingFile={isParsing} parsingFileError={parsingError} uploadedIdeas={uploadedIdeas}
             aiProvider={aiProvider} setAiProvider={setAiProvider} selectedModel={selectedModel} setSelectedModel={setSelectedModel}
             isDarkFrontiers={isDarkFrontiers}
           />
@@ -435,17 +608,27 @@ const App: React.FC = () => {
             onGenerateNextPart={handleGenerateNextPart} 
             currentPart={currentPartIndex} 
             totalParts={outlineParts.length}
-            revisionCount={revisionCount} onGenerateVisualPrompt={() => {}} onGenerateAllVisualPrompts={() => {}} isGeneratingAllVisualPrompts={false}
-            scriptType={scriptType} hasGeneratedAllVisualPrompts={false} visualPromptsCache={new Map()} onImportScript={() => {}}
+            revisionCount={revisionCount} 
+            onGenerateVisualPrompt={handleGenerateVisualPrompt} 
+            onGenerateAllVisualPrompts={handleGenerateAllVisualPrompts} 
+            isGeneratingAllVisualPrompts={isGeneratingAllVisualPrompts}
+            scriptType={scriptType} 
+            hasGeneratedAllVisualPrompts={hasGeneratedAllVisualPrompts} 
+            visualPromptsCache={visualPromptsCache} 
+            onImportScript={(file) => {
+                 const reader = new FileReader();
+                 reader.onload = (e) => setGeneratedScript(e.target?.result as string);
+                 reader.readAsText(file);
+            }}
           />
         </div>
          <div className="lg:col-span-3">
             <SideToolsPanel
                 script={generatedScript} targetWordCount={wordCount} revisionPrompt={revisionPrompt} setRevisionPrompt={setRevisionPrompt}
-                onRevise={() => {}} onSummarizeScript={() => setIsSummarizeModalOpen(true)} isLoading={isLoading} isSummarizing={isSummarizing} hasSummarizedScript={hasSummarizedScript}
+                onRevise={handleReviseScript} onSummarizeScript={() => setIsSummarizeModalOpen(true)} isLoading={isLoading} isSummarizing={isSummarizing} hasSummarizedScript={hasSummarizedScript}
                 onOpenLibrary={() => setIsLibraryOpen(true)} onSaveToLibrary={handleSaveToLibrary} hasSavedToLibrary={hasSavedToLibrary}
-                onExtractAndCount={() => setIsDialogueModalOpen(true)} wordCountStats={wordCountStats} isExtracting={isExtracting}
-                onOpenTtsModal={() => setIsTtsModalOpen(true)} onScoreScript={() => {}} isScoring={false}
+                onExtractAndCount={handleExtractDialogue} wordCountStats={wordCountStats} isExtracting={isExtracting}
+                onOpenTtsModal={handleOpenTtsModal} onScoreScript={handleScoreScript} isScoring={isScoring}
             />
         </div>
       </main>
@@ -453,6 +636,12 @@ const App: React.FC = () => {
       <ApiKeyModal isOpen={isApiKeyModalOpen} onClose={() => setIsApiKeyModalOpen(false)} currentApiKeys={apiKeys} onSaveKeys={handleSaveApiKeys} />
       <LibraryModal isOpen={isLibraryOpen} onClose={() => setIsLibraryOpen(false)} library={library} onLoad={handleLoadScript} onDelete={handleDeleteScript} onExport={() => {}} onImport={() => {}} />
       <SavedIdeasModal isOpen={isSavedIdeasModalOpen} onClose={() => setIsSavedIdeasModalOpen(false)} ideas={savedIdeas} onLoad={(i) => { setTitle(i.title); setOutlineContent(i.outline); setIsSavedIdeasModalOpen(false); }} onDelete={(id) => setSavedIdeas(prev => prev.filter(i => i.id !== id))} />
+      <DialogueModal isOpen={isDialogueModalOpen} onClose={() => setIsDialogueModalOpen(false)} dialogue={extractedDialogue} isLoading={isExtracting} error={extractionError} />
+      <ScoreModal isOpen={isScoreModalOpen} onClose={() => setIsScoreModalOpen(false)} score={scriptScore} isLoading={isScoring} error={scoringError} />
+      <VisualPromptModal isOpen={isVisualPromptModalOpen} onClose={() => setIsVisualPromptModalOpen(false)} prompt={visualPrompt} isLoading={isGeneratingVisualPrompt} error={visualPromptError} />
+      <AllVisualPromptsModal isOpen={isAllVisualPromptsModalOpen} onClose={() => setIsAllVisualPromptsModalOpen(false)} prompts={allVisualPrompts} isLoading={isGeneratingAllVisualPrompts} error={allVisualPromptsError} />
+      <SummarizeModal isOpen={isSummarizeModalOpen} onClose={() => setIsSummarizeModalOpen(false)} summary={summarizedScript} isLoading={isSummarizing} error={summarizationError} scriptType={scriptType} title={title} onGenerate={handleSummarizeScript} onGenerateVideoPrompt={handleGenerateVideoPromptLocal} />
+      <TtsModal isOpen={isTtsModalOpen} onClose={() => setIsTtsModalOpen(false)} dialogue={extractedDialogue} voices={ttsVoices} isLoadingVoices={isFetchingTtsVoices} onGenerate={handleGenerateTtsLocal} error={ttsModalError} />
     </div>
   );
 };
