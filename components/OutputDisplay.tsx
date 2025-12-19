@@ -268,15 +268,34 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
                 )}
 
                 {isGeneratingSequentially && (
-                    <button 
-                        onClick={onStopSequentialGenerate} 
-                        className="flex items-center space-x-2 bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-md text-sm font-semibold transition shadow-md shadow-red-900/20"
-                    >
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <rect x="5" y="5" width="10" height="10" rx="1" />
-                        </svg>
-                        <span>Dừng tạo</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {/* Continue Button in Header */}
+                        {!isLoading && currentPart < totalParts && (
+                            <button 
+                                onClick={onGenerateNextPart} 
+                                className="flex items-center space-x-2 bg-accent hover:brightness-110 text-white px-3 py-1.5 rounded-md text-sm font-semibold transition shadow-md shadow-accent/20"
+                            >
+                                <BoltIcon className="w-4 h-4" />
+                                <span>Tiếp tục phần {currentPart + 1}/{totalParts}</span>
+                            </button>
+                        )}
+                        
+                        {/* Stop Button - Enabled only when loading */}
+                        <button 
+                            onClick={onStopSequentialGenerate} 
+                            disabled={!isLoading}
+                            className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-sm font-semibold transition shadow-md ${
+                                isLoading 
+                                ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-900/20' 
+                                : 'bg-red-900/20 text-red-500/50 cursor-not-allowed border border-red-900/30'
+                            }`}
+                        >
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <rect x="5" y="5" width="10" height="10" rx="1" />
+                            </svg>
+                            <span>Dừng tạo</span>
+                        </button>
+                    </div>
                 )}
 
                 {!isGeneratingSequentially && (
@@ -305,19 +324,12 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
                 {renderContent()}
             </div>
         </div>
-        {isGeneratingSequentially && !isLoading && (
-            <div className="p-4 border-t border-border bg-primary/30 flex justify-end items-center gap-4">
-                {currentPart < totalParts && (
-                    <button onClick={onGenerateNextPart} className="flex-1 max-w-xs flex items-center justify-center bg-accent hover:brightness-110 text-white font-bold py-2.5 px-4 rounded-lg transition shadow-md shadow-accent/20">
-                        Tiếp tục phần {currentPart + 1}/{totalParts}
-                    </button>
-                )}
-                {currentPart === totalParts && (
-                    <div className="flex items-center gap-2 text-green-400 font-bold">
-                        <CheckIcon className="w-5 h-5" />
-                        <span>Kịch bản đã hoàn tất!</span>
-                    </div>
-                )}
+        {isGeneratingSequentially && !isLoading && currentPart === totalParts && (
+            <div className="p-4 border-t border-border bg-primary/30 flex justify-center items-center">
+                <div className="flex items-center gap-2 text-green-400 font-bold">
+                    <CheckIcon className="w-5 h-5" />
+                    <span>Kịch bản đã hoàn tất!</span>
+                </div>
             </div>
         )}
     </div>
