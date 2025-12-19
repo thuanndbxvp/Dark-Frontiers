@@ -30,6 +30,7 @@ interface OutputDisplayProps {
   scriptType: ScriptType;
   hasGeneratedAllVisualPrompts: boolean;
   visualPromptsCache: Map<string, VisualPrompt[]>;
+  loadingVisualPromptsParts: Set<string>;
   onImportScript: (file: File) => void;
   autoContinue?: boolean;
   setAutoContinue?: (val: boolean) => void;
@@ -106,12 +107,12 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
     scriptType,
     hasGeneratedAllVisualPrompts,
     visualPromptsCache,
+    loadingVisualPromptsParts,
     onImportScript,
     autoContinue,
     setAutoContinue
 }) => {
     const [copySuccess, setCopySuccess] = useState('');
-    const [loadingPromptIndex, setLoadingPromptIndex] = useState<number | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -141,12 +142,6 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-    };
-
-    const handleGeneratePromptClick = async (index: number, scene: string) => {
-        setLoadingPromptIndex(index);
-        await onGenerateVisualPrompt(scene);
-        setLoadingPromptIndex(null);
     };
 
     const handleImportClick = () => {
@@ -190,18 +185,24 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
         if (script) {
             const sections = script.split(/(?=^## .*?$|^### .*?$)/m).filter(s => s.trim() !== '');
             return sections.map((section, index) => {
-                const hasGeneratedPrompt = visualPromptsCache.has(section);
+                const isPartLoading = loadingVisualPromptsParts.has(section);
+                const hasCache = visualPromptsCache.has(section);
+
                 return (
                     <div key={index} className="script-section mb-4 pb-4 border-b border-border/50 last:border-b-0">
                         <div className="prose prose-invert max-w-none prose-p:text-text-secondary prose-p:leading-relaxed prose-strong:text-text-primary" dangerouslySetInnerHTML={{ __html: parseMarkdown(section) }} />
                         {!isOutline && section.trim().length > 50 && (
                             <div className="mt-3 text-right">
                                 <button
-                                    onClick={() => handleGeneratePromptClick(index, section)}
-                                    disabled={loadingPromptIndex === index}
-                                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-secondary hover:bg-primary/50 text-text-primary text-xs font-semibold rounded-md transition disabled:opacity-50"
+                                    onClick={() => onGenerateVisualPrompt(section)}
+                                    disabled={isPartLoading}
+                                    className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition disabled:opacity-50 ${
+                                        hasCache 
+                                        ? 'bg-accent/10 hover:bg-accent/20 text-accent border border-accent/30' 
+                                        : 'bg-secondary hover:bg-primary/50 text-text-primary'
+                                    }`}
                                 >
-                                    {loadingPromptIndex === index ? (
+                                    {isPartLoading ? (
                                         <>
                                          <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -212,8 +213,8 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
                                     ) : (
                                         <>
                                           <CameraIcon className="w-4 h-4" />
-                                          <span>Tạo 4 Prompts Hình ảnh</span>
-                                          {hasGeneratedPrompt && <CheckIcon className="w-4 h-4 text-green-400 ml-1" />}
+                                          <span>{hasCache ? 'Xem prompt' : 'Tạo 4 Prompts Hình ảnh'}</span>
+                                          {hasCache && <CheckIcon className="w-4 h-4 text-green-400 ml-1" />}
                                         </>
                                     )}
                                 </button>

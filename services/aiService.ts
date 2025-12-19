@@ -254,14 +254,22 @@ export const generateKeywordSuggestions = async (title: string, provider: AiProv
 };
 
 export const generateVisualPrompt = async (sceneDescription: string, provider: AiProvider, model: string): Promise<VisualPrompt[]> => {
+    const template = `Dark historical realism, late 18th–19th century atmosphere, muted sepia and earthy tones, low saturation color palette.
+Painterly oil painting style with antique illustration influence, soft diffused lighting, heavy mood and melancholic atmosphere.
+Textured old canvas look, subtle grain, realistic anatomy, detailed but restrained facial expressions.
+Cinematic composition, social realism aesthetic, sense of human hardship, suffering, and collective fate.
+No modern elements, no bright colors, no fantasy, no stylization, 16:9 aspect ratio.
+[INSERT IMAGE CONTENT HERE]`;
+
     const prompt = `Bạn là chuyên gia tạo prompt hình ảnh cho Midjourney/Leonardo.
-    Dựa trên trích đoạn kịch bản sau, hãy tạo ra đúng 4 prompt hình ảnh chi tiết để mô tả các khoảnh khắc quan trọng nhất.
+    Dựa trên trích đoạn kịch bản sau, hãy tạo ra đúng 4 prompt hình ảnh chi tiết.
+    Mỗi prompt PHẢI tuân thủ cấu trúc sau đây, thay thế nội dung mô tả cụ thể vào chỗ [INSERT IMAGE CONTENT HERE]:
     
-    PHONG CÁCH: Kinh dị dã sử (Historical Horror), điện ảnh, u ám (Ominous), gai góc (Gritty).
-    BỐI CẢNH: 1800s-1950s (Đèn dầu, tuyết rơi, thám hiểm, trang phục cổ điển).
-    CHI TIẾT: Ánh sáng chiaroscuro u tối, sương mù dày đặc, kết cấu chân thực (gỗ mục, sương giá, vết máu).
-    
-    TRẢ VỀ JSON duy nhất là một mảng gồm 4 đối tượng: [ { "english": "...", "vietnamese": "..." }, ... ]
+    \`\`\`
+    ${template}
+    \`\`\`
+
+    TRẢ VỀ JSON duy nhất là một mảng gồm 4 đối tượng: [ { "english": "FULL_PROMPT_HERE", "vietnamese": "Mô tả ngắn gọn bằng tiếng Việt" }, ... ]
     
     TRÍCH ĐOẠN KỊCH BẢN:
     "${sceneDescription}"`;

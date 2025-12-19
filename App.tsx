@@ -108,6 +108,7 @@ const App: React.FC = () => {
   const [visualPrompts, setVisualPrompts] = useState<VisualPrompt[] | null>(null);
   const [isGeneratingVisualPrompt, setIsGeneratingVisualPrompt] = useState<boolean>(false);
   const [visualPromptError, setVisualPromptError] = useState<string | null>(null);
+  const [loadingVisualPromptsParts, setLoadingVisualPromptsParts] = useState<Set<string>>(new Set());
 
   const [isAllVisualPromptsModalOpen, setIsAllVisualPromptsModalOpen] = useState<boolean>(false);
   const [allVisualPrompts, setAllVisualPrompts] = useState<AllVisualPromptsResult[] | null>(null);
@@ -214,6 +215,7 @@ const App: React.FC = () => {
     setCurrentPartIndex(0);
     setFullOutlineText('');
     isStoppingRef.current = false;
+    setLoadingVisualPromptsParts(new Set());
   };
 
   const handleGenerateScript = useCallback(async () => {
@@ -439,9 +441,25 @@ const App: React.FC = () => {
   }, [generatedScript, aiProvider, selectedModel]);
 
   const handleGenerateVisualPrompt = useCallback(async (scene: string) => {
+    // If it's already generated, just open the modal to show it
+    if (visualPromptsCache.has(scene)) {
+        setVisualPrompts(visualPromptsCache.get(scene) || null);
+        setIsVisualPromptModalOpen(true);
+        return;
+    }
+
+    // Mark as loading and show modal
     setIsGeneratingVisualPrompt(true);
     setIsVisualPromptModalOpen(true);
     setVisualPromptError(null);
+    setVisualPrompts(null);
+    
+    setLoadingVisualPromptsParts(prev => {
+        const next = new Set(prev);
+        next.add(scene);
+        return next;
+    });
+
     try {
         const prompts = await generateVisualPrompt(scene, aiProvider, selectedModel);
         setVisualPromptsCache(prev => {
@@ -449,13 +467,21 @@ const App: React.FC = () => {
             next.set(scene, prompts);
             return next;
         });
+        // We only update the visualPrompts state (which controls current modal content)
+        // if this scene is the one currently intended for the modal.
+        // Actually for simplicity, we just update it. If user re-opened for same scene, it works.
         setVisualPrompts(prompts);
     } catch (err) {
         setVisualPromptError(err instanceof Error ? err.message : 'Lỗi tạo prompt hình ảnh.');
     } finally {
         setIsGeneratingVisualPrompt(false);
+        setLoadingVisualPromptsParts(prev => {
+            const next = new Set(prev);
+            next.delete(scene);
+            return next;
+        });
     }
-  }, [aiProvider, selectedModel]);
+  }, [aiProvider, selectedModel, visualPromptsCache]);
 
   const handleGenerateAllVisualPrompts = useCallback(async () => {
     if (!generatedScript) return;
@@ -676,6 +702,7 @@ const App: React.FC = () => {
             scriptType={scriptType} 
             hasGeneratedAllVisualPrompts={hasGeneratedAllVisualPrompts} 
             visualPromptsCache={visualPromptsCache} 
+            loadingVisualPromptsParts={loadingVisualPromptsParts}
             onImportScript={(file) => {
                  const reader = new FileReader();
                  reader.onload = (e) => setGeneratedScript(e.target?.result as string);

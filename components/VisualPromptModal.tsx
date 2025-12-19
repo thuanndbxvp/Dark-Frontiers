@@ -119,6 +119,11 @@ export const VisualPromptModal: React.FC<VisualPromptModalProps> = ({ isOpen, on
                     ))}
                 </div>
             )}
+            {!isLoading && !error && !prompts && (
+                <div className="text-center py-10">
+                    <p className="text-text-secondary">Đang chuẩn bị dữ liệu...</p>
+                </div>
+            )}
         </div>
 
         <div className="p-4 border-t border-border flex justify-end items-center gap-4 bg-primary/20 rounded-b-xl">
@@ -131,8 +136,8 @@ export const VisualPromptModal: React.FC<VisualPromptModalProps> = ({ isOpen, on
                     Đang giải mã kịch bản và phác họa bối cảnh...
                 </div>
             )}
-            <button onClick={onClose} className="px-6 py-2 bg-accent hover:brightness-110 text-white font-bold rounded-lg transition-all shadow-lg shadow-accent/20">
-                Hoàn tất
+            <button onClick={onClose} className="px-6 py-2 bg-accent hover:brightness-110 text-white font-bold rounded-lg transition-all shadow-lg shadow-accent/20 min-w-[100px]">
+                Đóng
             </button>
         </div>
       </div>
