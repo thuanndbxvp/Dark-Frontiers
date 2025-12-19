@@ -5,7 +5,7 @@ export type Style = 'Narrative' | 'Descriptive' | 'Expository' | 'Persuasive' | 
 export type ScriptType = 'Video' | 'Podcast';
 export type NumberOfSpeakers = 'Auto' | '2' | '3' | '4' | '5';
 export type AiProvider = 'gemini' | 'openai' | 'elevenlabs';
-export type ScenarioType = 'general' | 'ww2' | 'finance';
+export type ScenarioType = 'general' | 'ww2' | 'finance' | 'dark_frontier';
 
 // Options interfaces
 export interface StyleOptions {

@@ -1,8 +1,4 @@
 
-
-
-
-
 import React, { useState, useEffect } from 'react';
 import { ClipboardIcon } from './icons/ClipboardIcon';
 import { DownloadIcon } from './icons/DownloadIcon';
@@ -73,7 +69,7 @@ export const SummarizeModal: React.FC<SummarizeModalProps> = ({ isOpen, onClose,
     const [isAutoPrompts, setIsAutoPrompts] = useState(true);
     const [promptCountInput, setPromptCountInput] = useState('10');
     const [includeNarration, setIncludeNarration] = useState(false);
-    const [scenarioType, setScenarioType] = useState<ScenarioType>('general');
+    const [scenarioType, setScenarioType] = useState<ScenarioType>('dark_frontier');
     const [referenceImages, setReferenceImages] = useState<string[]>([]);
     const [activeTab, setActiveTab] = useState<'image' | 'video'>('image');
     const [generatingVideoPromptKey, setGeneratingVideoPromptKey] = useState<string | null>(null);
@@ -85,7 +81,7 @@ export const SummarizeModal: React.FC<SummarizeModalProps> = ({ isOpen, onClose,
             setIsAutoPrompts(true);
             setPromptCountInput('10');
             setIncludeNarration(false);
-            setScenarioType('general');
+            setScenarioType('dark_frontier');
             setReferenceImages([]);
             setIsBulkGenerating(false);
         }
@@ -132,7 +128,7 @@ export const SummarizeModal: React.FC<SummarizeModalProps> = ({ isOpen, onClose,
         const scenesToGenerate: { scene: SceneSummary, partIndex: number }[] = [];
         summary.forEach((part, partIndex) => {
             part.scenes.forEach(scene => {
-                const needsGeneration = (scenarioType === 'finance' || scenarioType === 'ww2') && scene.videoPrompt.startsWith('Prompt chưa được tạo.');
+                const needsGeneration = scene.videoPrompt.startsWith('Prompt chưa được tạo.');
                 if (needsGeneration) {
                     scenesToGenerate.push({ scene, partIndex });
                 }
@@ -142,22 +138,21 @@ export const SummarizeModal: React.FC<SummarizeModalProps> = ({ isOpen, onClose,
         for (const { scene, partIndex } of scenesToGenerate) {
             try {
                 const key = `${partIndex}-${scene.sceneNumber}`;
-                setGeneratingVideoPromptKey(key); // Show progress on the current item
+                setGeneratingVideoPromptKey(key); 
                 await onGenerateVideoPrompt(scene, partIndex, config);
             } catch (error) {
                 console.error(`Error generating prompt for scene ${scene.sceneNumber}:`, error);
-                // The error is already handled inside onGenerateVideoPrompt which updates the UI
             }
         }
 
-        setGeneratingVideoPromptKey(null); // Clear individual loader state
+        setGeneratingVideoPromptKey(null);
         setIsBulkGenerating(false);
     };
 
     const handleRetryAllFailedPrompts = async () => {
         if (!summary) return;
         
-        setIsBulkGenerating(true); // Reuse loading state for UI feedback
+        setIsBulkGenerating(true);
 
         const config: SummarizeConfig = {
             numberOfPrompts: isAutoPrompts ? 'auto' : parseInt(promptCountInput, 10),
@@ -175,8 +170,6 @@ export const SummarizeModal: React.FC<SummarizeModalProps> = ({ isOpen, onClose,
             });
         });
 
-        // The onGenerateVideoPrompt prop already handles optimistic UI updates.
-        // We just need to iterate and call it for each failed item.
         for (const { scene, partIndex } of scenesToRetry) {
             try {
                 await handleGenerateVideoPromptClick(scene, partIndex);
@@ -202,7 +195,7 @@ export const SummarizeModal: React.FC<SummarizeModalProps> = ({ isOpen, onClose,
                     scene.summary,
                     scene.imagePrompt,
                     scene.videoPrompt,
-                    '' // Status column
+                    ''
                 ]);
             });
         });
@@ -222,7 +215,7 @@ export const SummarizeModal: React.FC<SummarizeModalProps> = ({ isOpen, onClose,
     
     const needsBulkGeneration = summary?.some(part => 
         part.scenes.some(scene => 
-            (scenarioType === 'finance' || scenarioType === 'ww2') && scene.videoPrompt.startsWith('Prompt chưa được tạo.')
+            scene.videoPrompt.startsWith('Prompt chưa được tạo.')
         )
     ) ?? false;
 
@@ -247,18 +240,17 @@ export const SummarizeModal: React.FC<SummarizeModalProps> = ({ isOpen, onClose,
                             onChange={(e) => setScenarioType(e.target.value as ScenarioType)}
                             className="w-full bg-primary border border-border rounded-md p-2 text-text-primary focus:ring-2 focus:ring-accent focus:border-accent transition"
                         >
-                            <option value="general">1-Kịch bản chung</option>
-                            <option value="ww2">2-Kịch bản WW2</option>
-                            <option value="finance">3-Kịch bản Finance</option>
+                            <option value="dark_frontier">1-Dark Frontier (Social Realism)</option>
+                            <option value="general">2-Kịch bản chung</option>
+                            <option value="ww2">3-Kịch bản WW2</option>
+                            <option value="finance">4-Kịch bản Finance</option>
                         </select>
                     </div>
 
-                    
                     <ImageUploader 
                         onImagesChange={setReferenceImages}
                         imagePreviewUrls={referenceImages}
                     />
-                    
 
                     <div>
                         <label className="block text-sm font-semibold text-text-primary mb-2">Số lượng prompt</label>
@@ -329,11 +321,11 @@ export const SummarizeModal: React.FC<SummarizeModalProps> = ({ isOpen, onClose,
                             <div className="space-y-4">
                                 {part.scenes.map(scene => {
                                     const promptText = activeTab === 'video' ? scene.videoPrompt : scene.imagePrompt;
-                                    const isVideoPlaceholder = activeTab === 'video' && (scenarioType === 'finance' || scenarioType === 'ww2') && promptText.startsWith('Prompt chưa được tạo.');
+                                    const isVideoPlaceholder = activeTab === 'video' && promptText.startsWith('Prompt chưa được tạo.');
                                     const isVideoError = activeTab === 'video' && promptText.startsWith('LỖI:');
                                     const currentKey = `${partIndex}-${scene.sceneNumber}`;
                                     const isGeneratingThisPrompt = generatingVideoPromptKey === currentKey;
-                                    const summaryLabel = (scenarioType === 'finance' || scenarioType === 'ww2') ? 'Trích đoạn kịch bản' : `Cảnh ${scene.sceneNumber}`;
+                                    const summaryLabel = `Cảnh ${scene.sceneNumber}`;
 
                                     return (
                                         <div key={scene.sceneNumber} className="border-t border-border/50 pt-3">
