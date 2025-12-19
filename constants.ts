@@ -12,11 +12,13 @@ export const AI_PROVIDER_OPTIONS: LabeledOption<AiProvider>[] = [
 ];
 
 export const GEMINI_MODELS: LabeledOption<string>[] = [
-    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-    { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro' },
+    { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro (Mạnh nhất)' },
+    { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash (Nhanh)' },
+    { value: 'gemini-2.5-flash-lite-latest', label: 'Gemini 2.5 Flash Lite' },
 ];
 
 export const OPENAI_MODELS: LabeledOption<string>[] = [
+    { value: 'gpt-5.2', label: 'GPT-5.2 (Flagship)' },
     { value: 'gpt-4o', label: 'GPT-4o' },
     { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
 ];

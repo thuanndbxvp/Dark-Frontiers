@@ -154,7 +154,7 @@ const App: React.FC = () => {
   const [scoringError, setScoringError] = useState<string | null>(null);
 
   const [aiProvider, setAiProvider] = useState<AiProvider>('gemini');
-  const [selectedModel, setSelectedModel] = useState<string>(GEMINI_MODELS[0].value);
+  const [selectedModel, setSelectedModel] = useState<string>(GEMINI_MODELS[0].value); // GEMINI_MODELS[0] is now Gemini 3 Pro
 
   const [visualPromptsCache, setVisualPromptsCache] = useState<Map<string, VisualPrompt>>(new Map());
   const [allVisualPromptsCache, setAllVisualPromptsCache] = useState<AllVisualPromptsResult[] | null>(null);

@@ -69,7 +69,8 @@ export const validateApiKey = async (apiKey: string, provider: AiProvider): Prom
     try {
         if (provider === 'gemini') {
             const ai = new GoogleGenAI({ apiKey });
-            await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: 'test' });
+            // Using Gemini 3 Flash for fast validation
+            await ai.models.generateContent({ model: 'gemini-3-flash-preview', contents: 'test' });
         } else if (provider === 'openai') {
             const response = await fetch('https://api.openai.com/v1/models', {
                 headers: { 'Authorization': `Bearer ${apiKey}` }
@@ -159,7 +160,7 @@ export const generateScript = async (params: GenerationParams, provider: AiProvi
 
     const outlineInstruction = outlineContent.trim() 
         ? `**User's Outline / Key Points (Crucial):** Expand upon: "${outlineContent}".`
-        : `**User's Outline / Key Points (Crucial):** Build a logical horror structure based on the title.`;
+        : `**User's Outline / Key Points (Crucial):** Build a logical structure based on the title.`;
 
     if (isDarkFrontiers) {
         prompt = `

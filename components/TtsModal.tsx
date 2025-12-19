@@ -126,7 +126,8 @@ export const TtsModal: React.FC<TtsModalProps> = ({ isOpen, onClose, dialogue, v
         }
     };
 
-    const isAnyPartLoading = Object.values(generationState).some(s => s.isLoading);
+    // Fix: Explicitly type the item in some() to avoid 'isLoading' does not exist on type 'unknown' during Object.values() iteration
+    const isAnyPartLoading = Object.values(generationState).some((s: GenerationStatus) => s.isLoading);
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4" onClick={onClose}>
