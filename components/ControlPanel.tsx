@@ -1,8 +1,9 @@
+
 import React, { useEffect } from 'react';
 import { OptionSelector } from './OptionSelector';
 import { SparklesIcon } from './icons/SparklesIcon';
 import type { StyleOptions, FormattingOptions, Expression, Style, ScriptType, NumberOfSpeakers, TopicSuggestionItem, SavedIdea, AiProvider } from '../types';
-import { EXPRESSION_OPTIONS, STYLE_OPTIONS, LANGUAGE_OPTIONS, SCRIPT_TYPE_OPTIONS, NUMBER_OF_SPEAKERS_OPTIONS, AI_PROVIDER_OPTIONS, GEMINI_MODELS, OPENAI_MODELS } from '../constants';
+import { EXPRESSION_OPTIONS, STYLE_OPTIONS, LANGUAGE_OPTIONS, SCRIPT_TYPE_OPTIONS, NUMBER_OF_SPEAKERS_OPTIONS, AI_PROVIDER_OPTIONS, GEMINI_MODELS, OPENAI_MODELS, DARK_FRONTIERS_IDEAS } from '../constants';
 import { IdeaBrainstorm } from './IdeaBrainstorm';
 import { Tooltip } from './Tooltip';
 import { EXPRESSION_EXPLANATIONS, STYLE_EXPLANATIONS, FORMATTING_EXPLANATIONS } from '../constants/explanations';
@@ -10,6 +11,7 @@ import { BookmarkIcon } from './icons/BookmarkIcon';
 import { IdeaFileUploader } from './IdeaFileUploader';
 import { LightbulbIcon } from './icons/LightbulbIcon';
 import { CheckIcon } from './icons/CheckIcon';
+import { BoltIcon } from './icons/BoltIcon';
 
 
 interface ControlPanelProps {
@@ -64,6 +66,7 @@ interface ControlPanelProps {
   setAiProvider: (provider: AiProvider) => void;
   selectedModel: string;
   setSelectedModel: (model: string) => void;
+  isDarkFrontiers?: boolean;
 }
 
 const ControlSection: React.FC<{title: string; children: React.ReactNode}> = ({ title, children }) => (
@@ -91,7 +94,8 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   lengthType, setLengthType, videoDuration, setVideoDuration,
   savedIdeas, onSaveIdea, onOpenSavedIdeasModal,
   onParseFile, isParsingFile, parsingFileError, uploadedIdeas,
-  aiProvider, setAiProvider, selectedModel, setSelectedModel
+  aiProvider, setAiProvider, selectedModel, setSelectedModel,
+  isDarkFrontiers
 }) => {
   const handleCheckboxChange = (key: keyof FormattingOptions, value: boolean) => {
     setFormattingOptions({ ...formattingOptions, [key]: value });
@@ -115,11 +119,21 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
   const handleProviderChange = (provider: AiProvider) => {
     setAiProvider(provider);
-    // Set default model for the new provider
     if (provider === 'gemini') {
         setSelectedModel(GEMINI_MODELS[0].value);
     } else {
         setSelectedModel(OPENAI_MODELS[0].value);
+    }
+  };
+
+  const handleSelectDarkFrontiersIdea = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedTitle = e.target.value;
+    if (!selectedTitle) return;
+    
+    const idea = DARK_FRONTIERS_IDEAS.find(i => i.title === selectedTitle);
+    if (idea) {
+        setTitle(idea.title);
+        setOutlineContent(idea.outline);
     }
   };
 
@@ -202,6 +216,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               value={outlineContent}
               onChange={(e) => setOutlineContent(e.target.value)}
             />
+            
             <Tooltip text="Sử dụng AI để thảo luận và phát triển ý tưởng của bạn một cách tương tác.">
               <IdeaBrainstorm 
                   setTitle={setTitle} 
@@ -210,6 +225,26 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                   selectedModel={selectedModel}
               />
             </Tooltip>
+
+            {isDarkFrontiers && (
+                <div className="mt-3 bg-amber-900/20 border border-amber-500/30 rounded-lg p-3">
+                    <label className="flex items-center gap-2 text-xs font-bold text-amber-500 mb-2 uppercase tracking-wider">
+                        <BoltIcon className="w-4 h-4" />
+                        Dark Frontiers Master List
+                    </label>
+                    <select 
+                        onChange={handleSelectDarkFrontiersIdea}
+                        className="w-full bg-black border border-amber-500/50 rounded-md p-2 text-amber-200 text-sm focus:ring-1 focus:ring-amber-500 outline-none"
+                        defaultValue=""
+                    >
+                        <option value="" disabled>-- Chọn chủ đề kinh dị dã sử --</option>
+                        {DARK_FRONTIERS_IDEAS.map(idea => (
+                            <option key={idea.title} value={idea.title}>{idea.title}</option>
+                        ))}
+                    </select>
+                </div>
+            )}
+
             <Tooltip text="Tải lên một file .txt chứa danh sách các ý tưởng để AI tự động phân tích và thêm vào danh sách gợi ý.">
               <IdeaFileUploader 
                   onParse={onParseFile}
@@ -306,14 +341,11 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                   <>
                     <SparklesIcon className="w-4 h-4 mr-2" />
                     <span>Gợi ý từ khóa</span>
-                    {!isSuggestingKeywords && hasGeneratedKeywordSuggestions && <CheckIcon className="w-4 h-4 ml-2 text-green-400" />}
+                    {!isSuggestingKeywords && hasGeneratedTopicSuggestions && <CheckIcon className="w-4 h-4 ml-2 text-green-400" />}
                   </>
                 )}
               </button>
             </Tooltip>
-            <p className="text-xs text-text-secondary/80 mt-1">
-              Nhập các từ khóa cách nhau bằng dấu phẩy. AI sẽ cố gắng đưa chúng vào kịch bản một cách tự nhiên.
-            </p>
             {keywordSuggestionError && <p className="text-red-400 text-sm mt-2">{keywordSuggestionError}</p>}
             {keywordSuggestions.length > 0 && (
                 <div className="mt-3">
@@ -449,11 +481,6 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                         <div>
                             <label htmlFor="wordCount" className="block text-xs font-medium text-text-secondary mb-1">Tổng số từ</label>
                             <input id="wordCount" type="number" value={wordCount} onChange={e => setWordCount(e.target.value)} className="w-full bg-primary border border-border rounded-md p-2 text-text-primary focus:ring-2 focus:ring-accent focus:border-accent transition" placeholder="VD: 800"/>
-                            {scriptType === 'Video' && parseInt(wordCount, 10) > 1000 && (
-                                <p className="text-xs text-amber-400 mt-2">
-                                    Lưu ý: Với kịch bản dài (&gt;1000 từ), AI sẽ tạo một dàn ý chi tiết để đảm bảo chất lượng.
-                                </p>
-                            )}
                         </div>
                     </Tooltip>
                 ) : (
@@ -461,11 +488,6 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                         <div>
                             <label htmlFor="videoDuration" className="block text-xs font-medium text-text-secondary mb-1">Thời lượng video (phút)</label>
                             <input id="videoDuration" type="number" value={videoDuration} onChange={e => setVideoDuration(e.target.value)} className="w-full bg-primary border border-border rounded-md p-2 text-text-primary focus:ring-2 focus:ring-accent focus:border-accent transition" placeholder="VD: 5"/>
-                             {scriptType === 'Video' && videoDuration && (parseInt(videoDuration, 10) * 150) > 1000 && (
-                                 <p className="text-xs text-amber-400 mt-2">
-                                    Lưu ý: Với kịch bản dài (&gt;1000 từ), AI sẽ tạo một dàn ý chi tiết để đảm bảo chất lượng.
-                                </p>
-                            )}
                         </div>
                     </Tooltip>
                 )}

@@ -31,22 +31,6 @@ const YoutubeLogoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
   </svg>
 );
 
-const PaletteIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
-  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" {...props}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M4.098 19.902a3.75 3.75 0 005.304 0l6.401-6.402M6.75 21A3.375 3.375 0 013.375 17.625a3.375 3.375 0 013.375-3.375h1.5a3.375 3.375 0 013.375 3.375v1.5a3.375 3.375 0 01-3.375 3.375h-1.5z" />
-    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 15.75a3.375 3.375 0 013.375-3.375h1.5a3.375 3.375 0 013.375 3.375v1.5a3.375 3.375 0 01-3.375 3.375h-1.5a3.375 3.375 0 01-3.375-3.375zM9 9.75a3.375 3.375 0 013.375-3.375h1.5a3.375 3.375 0 013.375 3.375v1.5a3.375 3.375 0 01-3.375 3.375h-1.5A3.375 3.375 0 019 11.25v-1.5z" />
-  </svg>
-);
-
-const THEMES = [
-  { name: 'Sky', color: '#38bdf8' },
-  { name: 'Rose', color: '#f43f5e' },
-  { name: 'Teal', color: '#2dd4bf' },
-  { name: 'Violet', color: '#8b5cf6' },
-  { name: 'Amber', color: '#f59e0b' },
-  { name: 'Yellow', color: '#facc15' },
-];
-
 const calculateWordCountsFromDialogue = (dialogueObject: Record<string, string>): WordCountStats => {
     const countWords = (text: string): number => {
         if (!text) return 0;
@@ -59,7 +43,6 @@ const calculateWordCountsFromDialogue = (dialogueObject: Record<string, string>)
     const total = sections.reduce((sum, section) => sum + section.count, 0);
     return { sections, total };
 };
-
 
 const App: React.FC = () => {
   const [title, setTitle] = useState<string>('');
@@ -154,7 +137,7 @@ const App: React.FC = () => {
   const [scoringError, setScoringError] = useState<string | null>(null);
 
   const [aiProvider, setAiProvider] = useState<AiProvider>('gemini');
-  const [selectedModel, setSelectedModel] = useState<string>(GEMINI_MODELS[0].value); // GEMINI_MODELS[0] is now Gemini 3 Pro
+  const [selectedModel, setSelectedModel] = useState<string>(GEMINI_MODELS[0].value);
 
   const [visualPromptsCache, setVisualPromptsCache] = useState<Map<string, VisualPrompt>>(new Map());
   const [allVisualPromptsCache, setAllVisualPromptsCache] = useState<AllVisualPromptsResult[] | null>(null);
@@ -166,13 +149,9 @@ const App: React.FC = () => {
   const [hasSummarizedScript, setHasSummarizedScript] = useState<boolean>(false);
   const [hasSavedToLibrary, setHasSavedToLibrary] = useState<boolean>(false);
 
-  const [themeColor, setThemeColor] = useState<string>(THEMES[0].color);
-  const [isThemeSelectorOpen, setIsThemeSelectorOpen] = useState<boolean>(false);
-  const themeSelectorRef = useRef<HTMLDivElement>(null);
-
+  const [themeColor, setThemeColor] = useState<string>('#38bdf8');
   const [wordCountStats, setWordCountStats] = useState<WordCountStats | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
-
 
   useEffect(() => {
     try {
@@ -267,7 +246,7 @@ const App: React.FC = () => {
         scriptParts, 
         scriptType, 
         numberOfSpeakers,
-        isDarkFrontiers // Pass specialized horror mode flag
+        isDarkFrontiers 
     };
 
     try {
@@ -286,7 +265,6 @@ const App: React.FC = () => {
     }
   }, [title, outlineContent, targetAudience, styleOptions, keywords, formattingOptions, wordCount, scriptParts, scriptType, numberOfSpeakers, lengthType, videoDuration, aiProvider, selectedModel, isDarkFrontiers]);
 
-  // Rest of handlers kept from original file...
   const handleSaveApiKeys = (keysToSave: Record<AiProvider, string[]>) => setApiKeys(keysToSave);
   const handleSaveToLibrary = useCallback(() => {
     if (!generatedScript.trim() || !title.trim()) return;
@@ -339,10 +317,10 @@ const App: React.FC = () => {
                 onClick={() => {
                     setIsDarkFrontiers(!isDarkFrontiers);
                     if (!isDarkFrontiers) {
-                        setThemeColor('#f59e0b'); // Amber for horror mode
+                        setThemeColor('#f59e0b');
                         setStyleOptions({ expression: 'Ominous', style: 'Cinematic Horror' });
                     } else {
-                        setThemeColor(THEMES[0].color);
+                        setThemeColor('#38bdf8');
                     }
                 }}
                 className={`px-4 py-2 rounded-lg font-bold text-xs transition-all flex items-center gap-2 border ${isDarkFrontiers ? 'bg-amber-900/40 text-amber-500 border-amber-500 shadow-lg shadow-amber-900/20' : 'bg-secondary text-text-secondary border-border hover:text-text-primary'}`}
@@ -384,6 +362,7 @@ const App: React.FC = () => {
             savedIdeas={savedIdeas} onSaveIdea={handleSaveIdea} onOpenSavedIdeasModal={() => setIsSavedIdeasModalOpen(true)}
             onParseFile={() => {}} isParsingFile={false} parsingFileError={null} uploadedIdeas={[]}
             aiProvider={aiProvider} setAiProvider={setAiProvider} selectedModel={selectedModel} setSelectedModel={setSelectedModel}
+            isDarkFrontiers={isDarkFrontiers}
           />
         </div>
         <div className="lg:col-span-6">
