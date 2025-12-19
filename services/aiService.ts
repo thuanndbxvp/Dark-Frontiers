@@ -90,33 +90,39 @@ export const validateApiKey = async (key: string, provider: AiProvider): Promise
     return false;
 };
 
-// --- DARK FRONTIERS DNA & TENSION CURVE CALIBRATION ---
+// --- DARK FRONTIERS DNA: REFINED FOR CINEMATIC AUDIO EXPERIENCE ---
 const DARK_FRONTIERS_DNA = `
-BẠN LÀ CONTENT OFFICER CHO KÊNH "DARK FRONTIERS" (KINH DỊ DÃ SỬ). 
-BẮT BUỘC TUÂN THỦ CƠ CHẾ CĂNG THẲNG (TENSION CURVE) VÀ CẤU TRÚC SAU:
+BẠN LÀ CONTENT OFFICER CHO KÊNH "DARK FRONTIERS". 
+TRIẾT LÝ: "Chúng ta bán Nỗi sợ về những điều chưa biết (Fear of the Unknown) núp bóng dưới vỏ bọc Lịch sử."
 
-1. THE NARRATIVE ARC (BIỂU ĐỒ CĂNG THẲNG):
-   - ## THE HOOK (0-15s): ĐỈNH CAO GIẢ (FAKE PEAK). 
-     + POV: Ngôi thứ 3 (Narrator). 
-     + NỘI DUNG: Tóm tắt ngay kết cục bi thảm hoặc hiện trường vụ án kỳ quái. Phải có bằng chứng vật lý gây tò mò (Vd: Súng bị bẻ cong, xác chết không máu, dấu chân trên trần nhà...).
-     + CTA: Kết thúc Hook bằng "So before we continue into the dark, make sure to subscribe..."
-   
-   - ## THE BODY (SLOW BURN & SIEGE): CĂNG THẲNG LEO DỐC. 
-     + POV: BẮT BUỘC chuyển sang Ngôi thứ 1 ("TÔI"). 
-     + NHÂN VẬT: Đặt tên cụ thể (KIỂM TRA LỊCH SỬ, KHÔNG DÙNG "ELIAS"). Vai trò rõ ràng (Lính, thợ mỏ, thợ săn...).
-     + TRA TẤN TÂM LÝ: Kéo dài sự cô độc. Đừng kể chuyện, hãy cho khán giả ngửi thấy mùi máu, nghe thấy tiếng cào xước ngoài cửa gỗ. 
-   
-   - ## THE MONSTER (THE CLIMAX): ĐỈNH CAO THẬT SỰ.
-     + Quái vật thông minh, đùa giỡn, bắt chước tiếng người thân trước khi lộ diện.
-   
-   - ## THE OUTRO: HẬU QUẢ TÂM LÝ.
-     + Nhân vật sống sót nhưng bị chấn thương tâm lý vĩnh viễn. Kết luận triết lý u ám.
+1. CỐT LÕI NỘI DUNG:
+   - Historical Fiction Horror: Sự kiện có thật + Địa điểm có thật + Sinh vật huyền bí (Cryptids).
+   - BỐI CẢNH: 1800s - 1950s. Tuyệt đối không có công nghệ hiện đại (GPS, ĐT vệ tinh). Chỉ có súng trường, đèn dầu, la bàn cơ học.
+   - CHỦ ĐỀ: Lost Expeditions, Industrial Horror, War & Monsters.
 
-2. TRIẾT LÝ VIẾT: 
-   - SHOW, DON'T TELL: Đừng nói "Tôi sợ", hãy tả "Tay tôi run đến mức không châm nổi điếu thuốc".
-   - TẬP TRUNG GIÁC QUAN (SENSORY): Mô tả kỹ âm thanh (tiếng bước chân trên lá khô), mùi vị (mùi lưu huỳnh, mùi rêu ẩm mốc).
-   - PHONG CÁCH: Ominous, Gritty, Melancholic, Psychological Horror.
-   - TUYỆT ĐỐI KHÔNG VIẾT RÁC KỸ THUẬT [SFX], [Visual] TRONG KỊCH BẢN.
+2. CẤU TRÚC 5 GIAI ĐOẠN (THE NARRATIVE ARC):
+   - ## THE HOOK: "Fake Peak" (Ngôi thứ 3 - Narrator). 
+     + Tóm tắt ngay kết cục bi thảm. 
+     + Phải có chi tiết vật lý kỳ quái (Vd: Súng bị bẻ cong, xác chết không máu...).
+     + Kết thúc bằng: "So before we continue into the dark, make sure to subscribe to Dark Frontiers."
+   
+   - ## THE SLOW BURN: "The Descent" (BẮT BUỘC NGÔI THỨ 1 - Survivor).
+     + Nhân vật có tên cụ thể (KHÔNG DÙNG "ELIAS"). Vai trò rõ ràng (Lính, thợ mỏ...).
+     + Sự im lặng bất thường, mùi lạ, dấu chân bí ẩn.
+   
+   - ## THE SIEGE: "The Trap" (Ngôi thứ 1). 
+     + Căng thẳng leo dốc. Quái vật vờn mồi, tấn công tâm lý từ bóng tối.
+   
+   - ## THE CLIMAX: "The Face of Fear" (Ngôi thứ 1).
+     + Đối mặt trực diện. Quái vật thông minh, có thể bắt chước tiếng người thân. 
+   
+   - ## THE SCAR: "The Aftermath" (Ngôi thứ 1).
+     + Kết luận ám ảnh, triết lý u ám. Nhân vật sống sót nhưng bị thay đổi vĩnh viễn.
+
+3. QUY TẮC VIẾT (AUDIO CINEMA DNA):
+   - SHOW, DON'T TELL: Đừng nói "tôi sợ", hãy tả "tay tôi run đến mức không thể châm nổi điếu thuốc".
+   - GIÁC QUAN (SENSORY): Tập trung sâu vào Âm thanh (tiếng gió rít, tiếng cào cửa) và Mùi vị (mùi lưu huỳnh, mùi máu tanh, mùi rêu ẩm).
+   - TÔNG GIỌNG: Regretful Survivor (Mệt mỏi, ám ảnh, hối tiếc).
 `;
 
 const SOCIAL_REALISM_TEMPLATE = `19th century social realism painting style, dark historical realism.
@@ -133,7 +139,7 @@ Aspect ratio 16:9.
 export const generateScript = async (params: GenerationParams, provider: AiProvider, model: string): Promise<string> => {
     const { title, targetAudience, wordCount, isDarkFrontiers } = params;
     let prompt = isDarkFrontiers 
-        ? `${DARK_FRONTIERS_DNA}\nVIẾT KỊCH BẢN CHI TIẾT THEO BIỂU ĐỒ CĂNG THẲNG CHO: "${title}". NGÔN NGỮ: ${targetAudience}. ĐỘ DÀI: ${wordCount} từ.\nLƯU Ý QUY TẮC POV VÀ SENSORY DETAILS.`
+        ? `${DARK_FRONTIERS_DNA}\nVIẾT KỊCH BẢN CHI TIẾT THEO CẤU TRÚC 5 GIAI ĐOẠN CHO: "${title}". NGÔN NGỮ: ${targetAudience}. ĐỘ DÀI: ${wordCount} từ.\nTUÂN THỦ POV VÀ CHI TIẾT GIÁC QUAN.`
         : `Viết kịch bản YouTube về "${title}". Ngôn ngữ: ${targetAudience}. Chia phần ##. KỊCH BẢN SẠCH.`;
     try { return await callApi(prompt, provider, model); } catch (error) { throw handleApiError(error, 'tạo kịch bản'); }
 };
@@ -141,7 +147,7 @@ export const generateScript = async (params: GenerationParams, provider: AiProvi
 export const generateScriptOutline = async (params: GenerationParams, provider: AiProvider, model: string): Promise<string> => {
     const { title, targetAudience, isDarkFrontiers } = params;
     let prompt = isDarkFrontiers 
-        ? `${DARK_FRONTIERS_DNA}\nTạo dàn ý 4 phần đúng cấu trúc Narrative Arc: ## THE HOOK (Fake Peak), ## THE BODY (Slow Burn), ## THE MONSTER (Climax), ## THE OUTRO cho chủ đề: "${title}". Ngôn ngữ: ${targetAudience}.` 
+        ? `${DARK_FRONTIERS_DNA}\nTạo dàn ý 5 phần đúng cấu trúc: ## THE HOOK (Ngôi 3), ## THE SLOW BURN (Ngôi 1), ## THE SIEGE (Ngôi 1), ## THE CLIMAX (Ngôi 1), ## THE SCAR (Ngôi 1) cho chủ đề: "${title}". Ngôn ngữ: ${targetAudience}.` 
         : `Tạo dàn ý YouTube cho "${title}". Chia phần ##.`;
     try {
         const outline = await callApi(prompt, provider, model);
@@ -154,14 +160,17 @@ export const generateScriptPart = async (fullOutline: string, previousPartsScrip
     
     let arcInstruction = "";
     if (isDarkFrontiers) {
-        if (currentPartOutline.toUpperCase().includes("HOOK")) {
-            arcInstruction = "Giai đoạn FAKE PEAK: Ngôi thứ 3. Mô tả hiện trường tàn khốc với chi tiết vật lý kỳ quái. Kết thúc bằng CTA Subscribe.";
-        } else if (currentPartOutline.toUpperCase().includes("BODY")) {
-            arcInstruction = "Giai đoạn SLOW BURN: BẮT BUỘC NGÔI THỨ 1. Đặt tên nhân vật (không dùng Elias). Kéo dài sự tra tấn tâm lý bằng âm thanh và mùi vị. Căng thẳng phải leo dốc chậm rãi.";
-        } else if (currentPartOutline.toUpperCase().includes("MONSTER")) {
-            arcInstruction = "Giai đoạn CLIMAX: Ngôi thứ 1. Quái vật đùa giỡn, bắt chước tiếng người thân.";
-        } else {
-            arcInstruction = "Giai đoạn OUTRO: Melancholic & Triết lý. Ngôi thứ 1.";
+        const upperPart = currentPartOutline.toUpperCase();
+        if (upperPart.includes("HOOK")) {
+            arcInstruction = "Giai đoạn HOOK: POV Ngôi thứ 3. Mô tả hiện trường tàn khốc với chi tiết vật lý kỳ quái. Kết thúc bằng CTA Subscribe.";
+        } else if (upperPart.includes("BURN")) {
+            arcInstruction = "Giai đoạn SLOW BURN: POV Ngôi thứ 1. Tên nhân vật mới (không Elias). Nhân vật mệt mỏi, hối tiếc. Mô tả âm thanh và mùi vị điềm báo.";
+        } else if (upperPart.includes("SIEGE")) {
+            arcInstruction = "Giai đoạn SIEGE: POV Ngôi thứ 1. Căng thẳng leo dốc. Quái vật vờn mồi từ bóng tối. Tay chân run rẩy, hơi thở dồn dập.";
+        } else if (upperPart.includes("CLIMAX")) {
+            arcInstruction = "Giai đoạn CLIMAX: POV Ngôi thứ 1. Đối mặt trực diện. Quái vật bắt chước tiếng người thân. Trốn thoát trong gang tấc.";
+        } else if (upperPart.includes("SCAR")) {
+            arcInstruction = "Giai đoạn SCAR: POV Ngôi thứ 1. Hậu quả tâm lý, ám ảnh, triết lý u ám.";
         }
     }
 
@@ -173,7 +182,7 @@ export const generateScriptPart = async (fullOutline: string, previousPartsScrip
 };
 
 export const generateTopicSuggestions = async (title: string, provider: AiProvider, model: string): Promise<TopicSuggestionItem[]> => {
-    const prompt = `Gợi ý 5 ý tưởng video YouTube kinh dị dã sử. JSON: { title, outline }.`;
+    const prompt = `Gợi ý 5 ý tưởng video YouTube kinh dị dã sử (Fear of the Unknown, 1800s-1950s). JSON: { title, outline }.`;
     try {
         const response = await callApi(prompt, provider, model);
         return JSON.parse(cleanJsonResponse(response));
@@ -181,12 +190,12 @@ export const generateTopicSuggestions = async (title: string, provider: AiProvid
 };
 
 export const reviseScript = async (script: string, revisionPrompt: string, params: any, provider: AiProvider, model: string): Promise<string> => {
-    const prompt = `Chỉnh sửa kịch bản: "${revisionPrompt}". \nLƯU Ý: Nếu là Dark Frontiers, giữ vững cấu trúc POV và Narrative Arc.\nKịch bản:\n${script}`;
+    const prompt = `Chỉnh sửa kịch bản: "${revisionPrompt}". \nLƯU Ý: Giữ vững cấu trúc POV và triết lý sensory (âm thanh, mùi vị) của Dark Frontiers.\nKịch bản:\n${script}`;
     try { return await callApi(prompt, provider, model); } catch (e) { throw handleApiError(e, 'sửa kịch bản'); }
 };
 
 export const extractDialogue = async (script: string, provider: AiProvider, model: string): Promise<Record<string, string>> => {
-    const prompt = `Trích xuất lời dẫn SẠCH từ kịch bản sau. JSON: { "Phần": "Nội dung" }.\nKỊCH BẢN:\n${script}`;
+    const prompt = `Trích xuất lời dẫn SẠCH từ kịch bản sau (loại bỏ tiêu đề, chỉ lấy text lời thoại). JSON: { "Phần": "Nội dung" }.\nKỊCH BẢN:\n${script}`;
     try {
         const response = await callApi(prompt, provider, model);
         return JSON.parse(cleanJsonResponse(response));
@@ -194,7 +203,7 @@ export const extractDialogue = async (script: string, provider: AiProvider, mode
 };
 
 export const generateKeywordSuggestions = async (title: string, provider: AiProvider, model: string): Promise<string[]> => {
-    const prompt = `Gợi ý 10 từ khóa SEO cho video "${title}".`;
+    const prompt = `Gợi ý 10 từ khóa SEO (anh/việt) cho video kinh dị dã sử: "${title}".`;
     try {
         const response = await callApi(prompt, provider, model);
         return response.split(',').map(k => k.trim());
@@ -210,7 +219,7 @@ export const generateVisualPrompt = async (sceneDescription: string, provider: A
 };
 
 export const generateAllVisualPrompts = async (script: string, provider: AiProvider, model: string): Promise<AllVisualPromptsResult[]> => {
-    const prompt = `Tạo prompts hình ảnh cho các cảnh chính. JSON array: { scene, english, vietnamese }. Phong cách Social Realism.`;
+    const prompt = `Tạo prompts hình ảnh cho các cảnh chính. JSON array: { scene, english, vietnamese }. Phong cách Social Realism (19th century).`;
     try {
         const response = await callApi(prompt, provider, model);
         return JSON.parse(cleanJsonResponse(response));
@@ -226,7 +235,7 @@ export const summarizeScriptForScenes = async (script: string, config: Summarize
 };
 
 export const suggestStyleOptions = async (title: string, provider: AiProvider, model: string): Promise<StyleOptions> => {
-    const prompt = `Gợi ý Expression và Style cho "${title}". JSON: { "expression": "...", "style": "..." }`;
+    const prompt = `Gợi ý Expression và Style phù hợp với Dark Frontiers cho "${title}". JSON: { "expression": "...", "style": "..." }`;
     try {
         const response = await callApi(prompt, provider, model);
         return JSON.parse(cleanJsonResponse(response));
@@ -234,7 +243,7 @@ export const suggestStyleOptions = async (title: string, provider: AiProvider, m
 };
 
 export const parseIdeasFromFile = async (content: string, provider: AiProvider, model: string): Promise<TopicSuggestionItem[]> => {
-    const prompt = `Trích xuất ý tưởng video. JSON: { title, outline }.`;
+    const prompt = `Trích xuất ý tưởng video kinh dị dã sử từ nội dung file. JSON: { title, outline }.`;
     try {
         const response = await callApi(prompt, provider, model);
         return JSON.parse(cleanJsonResponse(response));
@@ -248,17 +257,15 @@ export const getElevenlabsVoices = async (): Promise<ElevenlabsVoice[]> => {
     const savedKeysJson = localStorage.getItem('ai-api-keys');
     const totalKeys = savedKeysJson ? (JSON.parse(savedKeysJson).elevenlabs?.length || 0) : 0;
     
-    // Thử tối đa bằng số lượng key hiện có
     for (let attempt = 0; attempt < Math.max(1, totalKeys); attempt++) {
         const { apiKey, releaseKey } = await apiKeyManager.getAvailableKey('elevenlabs');
         try {
             const res = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': apiKey } });
             
             if (res.status === 401 || res.status === 429) {
-                // Key hết hạn hoặc hết quota, báo cáo lỗi để xoay key
                 apiKeyManager.reportError('elevenlabs', apiKey);
                 releaseKey();
-                continue; // Thử với key tiếp theo
+                continue;
             }
 
             if (!res.ok) throw new Error("Không thể tải danh sách giọng nói.");
@@ -338,17 +345,17 @@ export const generateElevenlabsTts = async (text: string, voiceId: string): Prom
 };
 
 export const scoreScript = async (script: string, provider: AiProvider, model: string): Promise<string> => {
-    const prompt = `Bạn là chuyên gia thẩm định nội dung của Dark Frontiers. Hãy chấm điểm kịch bản này khắt khe dựa trên:
-    1. Cấu trúc Narrative Arc (Hook giả -> Slow Burn -> Climax)?
-    2. Ngôi kể (Hook ngôi 3, Body ngôi 1)?
+    const prompt = `Bạn là chuyên gia thẩm định nội dung của Dark Frontiers. Hãy chấm điểm kịch bản này dựa trên:
+    1. Cấu trúc 5 giai đoạn (Hook -> Burn -> Siege -> Climax -> Scar)?
+    2. POV (Hook ngôi 3, thân bài ngôi 1)?
     3. Sensory Details (Âm thanh, mùi vị)?
     4. Show, Don't Tell?
-    5. Nhân vật lịch sử cụ thể?`;
+    5. Không gian lịch sử (1800s-1950s) và sự vắng bóng công nghệ hiện đại?`;
     try { return await callApi(prompt, provider, model); } catch (e) { throw handleApiError(e, 'chấm điểm kịch bản'); }
 };
 
 export const generateSingleVideoPrompt = async (scene: SceneSummary, config: SummarizeConfig, provider: AiProvider, model: string): Promise<string> => {
-    const prompt = `Tạo video prompt cho: "${scene.summary}".`;
+    const prompt = `Tạo video prompt (Tiếng Anh) cho cảnh quay kinh dị dã sử: "${scene.summary}". Tập trung vào ánh sáng đèn dầu, sương mù, góc quay cận cảnh biểu cảm ám ảnh.`;
     try { return await callApi(prompt, provider, model); } catch (e) { throw handleApiError(e, 'tạo prompt video'); }
 };
 

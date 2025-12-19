@@ -22,23 +22,26 @@ interface TtsModalProps {
 interface GenerationStatus {
     isLoading: boolean;
     audioUrl: string | null;
-    duration: number | null; // Thêm trường duration để tính SRT
+    duration: number | null;
     error: string | null;
 }
 
 // Helper định dạng thời gian cho SRT: HH:mm:ss,mmm
 const formatSrtTime = (seconds: number): string => {
-    const date = new Date(0);
-    date.setSeconds(seconds);
-    const timeString = date.toISOString().substr(11, 8);
-    const milliseconds = Math.floor((seconds % 1) * 1000).toString().padStart(3, '0');
-    return `${timeString},${milliseconds}`;
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    const ms = Math.floor((seconds % 1) * 1000);
+    
+    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`;
 };
 
-// Logic tạo nội dung file SRT từ văn bản và thời lượng
+// Logic tạo nội dung file SRT nâng cao: chia nhỏ câu và tính trọng số thời gian theo ký tự
 const generateSrtContent = (text: string, duration: number): string => {
-    // Tách văn bản thành các câu dựa trên dấu chấm, hỏi, cảm hoặc xuống dòng
-    const sentences = text.split(/([.!?\n]+)/).reduce((acc: string[], cur, idx) => {
+    if (!text.trim() || duration <= 0) return "";
+
+    // 1. Tách văn bản thành các câu cơ bản dựa trên dấu câu
+    const initialChunks = text.split(/([.!?\n]+)/).reduce((acc: string[], cur, idx) => {
         if (idx % 2 === 0) {
             if (cur.trim()) acc.push(cur.trim());
         } else {
@@ -47,15 +50,69 @@ const generateSrtContent = (text: string, duration: number): string => {
         return acc;
     }, []).filter(s => s.trim().length > 0);
 
-    if (sentences.length === 0) return "";
+    // 2. Chia nhỏ các câu quá dài để phụ đề mượt hơn (giới hạn ~45 ký tự mỗi dòng)
+    const MAX_CHARS_PER_LINE = 45;
+    const finalChunks: string[] = [];
 
-    const timePerSentence = duration / sentences.length;
+    initialChunks.forEach(chunk => {
+        if (chunk.length <= MAX_CHARS_PER_LINE) {
+            finalChunks.push(chunk);
+        } else {
+            // Thử tách theo dấu phẩy, chấm phẩy hoặc các từ nối
+            const subParts = chunk.split(/([,;:\-—]+)/);
+            let currentPart = "";
+            
+            subParts.forEach((part, pIdx) => {
+                if (pIdx % 2 === 0) { // Nội dung
+                    if ((currentPart + part).length > MAX_CHARS_PER_LINE && currentPart !== "") {
+                        finalChunks.push(currentPart.trim());
+                        currentPart = part;
+                    } else {
+                        currentPart += part;
+                    }
+                } else { // Dấu câu tách
+                    currentPart += part;
+                }
+            });
+
+            if (currentPart.trim()) {
+                // Nếu vẫn quá dài, tách theo khoảng trắng (từng từ)
+                if (currentPart.length > MAX_CHARS_PER_LINE) {
+                    const words = currentPart.split(/\s+/);
+                    let line = "";
+                    words.forEach(word => {
+                        if ((line + word).length > MAX_CHARS_PER_LINE && line !== "") {
+                            finalChunks.push(line.trim());
+                            line = word + " ";
+                        } else {
+                            line += word + " ";
+                        }
+                    });
+                    if (line.trim()) finalChunks.push(line.trim());
+                } else {
+                    finalChunks.push(currentPart.trim());
+                }
+            }
+        }
+    });
+
+    if (finalChunks.length === 0) return "";
+
+    // 3. Tính toán thời gian dựa trên trọng số độ dài ký tự (Character Weighting)
+    // Giúp câu ngắn xuất hiện nhanh, câu dài xuất hiện lâu hơn, khớp với tốc độ nói tự nhiên
+    const totalChars = finalChunks.reduce((sum, chunk) => sum + chunk.length, 0);
+    let currentTime = 0;
     let srt = "";
 
-    sentences.forEach((sentence, index) => {
-        const start = index * timePerSentence;
-        const end = (index + 1) * timePerSentence;
-        srt += `${index + 1}\n${formatSrtTime(start)} --> ${formatSrtTime(end)}\n${sentence}\n\n`;
+    finalChunks.forEach((chunk, index) => {
+        // Tỉ lệ thời gian = (độ dài câu / tổng độ dài) * tổng thời gian audio
+        const chunkDuration = (chunk.length / totalChars) * duration;
+        const start = currentTime;
+        const end = currentTime + chunkDuration;
+        
+        srt += `${index + 1}\n${formatSrtTime(start)} --> ${formatSrtTime(end)}\n${chunk}\n\n`;
+        
+        currentTime = end;
     });
 
     return srt;
