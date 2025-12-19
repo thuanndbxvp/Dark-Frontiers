@@ -69,7 +69,6 @@ export const validateApiKey = async (apiKey: string, provider: AiProvider): Prom
     try {
         if (provider === 'gemini') {
             const ai = new GoogleGenAI({ apiKey });
-            // Using Gemini 3 Flash for fast validation
             await ai.models.generateContent({ model: 'gemini-3-flash-preview', contents: 'test' });
         } else if (provider === 'openai') {
             const response = await fetch('https://api.openai.com/v1/models', {
@@ -152,61 +151,53 @@ const callApi = async (prompt: string, provider: AiProvider, model: string, json
 }
 
 export const generateScript = async (params: GenerationParams, provider: AiProvider, model: string): Promise<string> => {
-    const { title, outlineContent, targetAudience, styleOptions, keywords, formattingOptions, wordCount, scriptParts, scriptType, numberOfSpeakers, isDarkFrontiers } = params;
+    const { title, outlineContent, targetAudience, styleOptions, keywords, formattingOptions, wordCount, scriptType, numberOfSpeakers, isDarkFrontiers } = params;
     const { expression, style } = styleOptions;
     const language = targetAudience;
 
     let prompt: string;
 
     const outlineInstruction = outlineContent.trim() 
-        ? `**User's Outline / Key Points (Crucial):** Expand upon: "${outlineContent}".`
-        : `**User's Outline / Key Points (Crucial):** Build a logical structure based on the title.`;
+        ? `**Dàn ý / Các điểm chính (Quan trọng):** Mở rộng dựa trên: "${outlineContent}".`
+        : `**Dàn ý / Các điểm chính (Quan trọng):** Xây dựng cấu trúc hợp lý dựa trên tiêu đề.`;
 
     if (isDarkFrontiers) {
         prompt = `
-            You are the Chief Content Officer for "Dark Frontiers", a YouTube channel specializing in **Historical Fiction Horror (1800s - 1950s)**. 
-            Your goal is to create an **Audio Cinema Experience** that sells the "Fear of the Unknown".
+            Bạn là Content Officer cho kênh "Dark Frontiers", chuyên về **Kinh dị Dã sử (thế kỷ 19 - giữa thế kỷ 20)**. 
+            Mục tiêu: Tạo ra một trải nghiệm **Audio Cinema** gieo rắc nỗi sợ hãi.
 
-            **PRIMARY TITLE:** "${title}"
-            **TARGET LANGUAGE:** ${language}
+            **TIÊU ĐỀ CHÍNH:** "${title}"
+            **NGÔN NGỮ KỊCH BẢN (NARRATION/DIALOGUE):** ${language}
+            **NGÔN NGỮ CÁC NHÃN KỸ THUẬT (HEADERS, AUDIO CUES, VISUAL SUGGESTIONS):** Phải luôn là Tiếng Việt.
 
-            **THE DARK FRONTIERS FORMULA (NON-NEGOTIABLE STRUCTURE):**
-            1. **THE HOOK (0-1 min):** Narrated in 3rd person. Objective, cold warning. Summarize the tragic end immediately to create dread.
-            2. **THE SLOW BURN:** Switch to 1st person POV (The Survivor). Use "Show, Don't Tell". Describe subtle signs: a strange metallic smell, an unnatural silence, the feeling of eyes on the back of the neck.
-            3. **THE SIEGE:** The monster/entity toys with the victim. Psychological warfare. Mimicry of voices, shadows moving in peripheral vision. Tension builds to a breaking point.
-            4. **THE CLIMAX:** Direct confrontation or a narrow, terrifying escape. High sensory detail (breath on the neck, freezing air).
-            5. **THE SCAR (Conclusion):** The survivor is permanently changed. A melancholic, haunting ending.
+            **CẤU TRÚC DARK FRONTIERS (BẮT BUỘC):**
+            1. **PHẦN MỞ ĐẦU (THE HOOK):** Ngôi thứ 3. Khách quan, lạnh lùng. Tóm tắt kết cục bi thảm để tạo sự điềm báo.
+            2. **SỰ KHỞI ĐẦU (THE SLOW BURN):** Chuyển sang ngôi thứ nhất (Người sống sót). Mô tả các dấu hiệu tinh tế: mùi kim loại lạ, sự im lặng bất thường.
+            3. **VÒNG VÂY (THE SIEGE):** Thực thể vờn nạn nhân. Chiến tranh tâm lý. Những bóng ma di chuyển trong tầm mắt ngoại vi.
+            4. **CAO TRÀO (THE CLIMAX):** Đối đầu trực tiếp hoặc trốn thoát kịch tính.
+            5. **DẤU VẾT (THE SCAR):** Kết thúc u sầu, ám ảnh.
 
             **VOICE DNA:**
-            - POV: 1st person "Survivor" (except the Hook).
+            - POV: Ngôi thứ nhất "Người sống sót" (trừ phần Hook).
             - TONE: Ominous, Gritty, Melancholic.
-            - RULE: NEVER say "I was scared". INSTEAD, say "The rifle in my hands felt like a useless twig against the blackness" or "The cold wasn't just in the air; it was a blade pressing against my heart."
+            - QUY TẮC: ĐỪNG nói "Tôi sợ". HÃY nói "Khẩu súng trong tay tôi cảm thấy vô dụng như một cành củi khô trước bóng tối".
 
-            **AUDIO STRATEGY (MANDATORY CUES):**
-            Integrate soundscape cues like: [Wind howling through pines], [Metronome-like dripping], [Heavy, wet footsteps], [Sudden silence], [Whispers in a language that shouldn't exist].
+            **ĐỊNH DẠNG BẮT BUỘC:**
+            **[TÊN PHẦN - BẰNG TIẾNG VIỆT]**
+            **Cues Âm thanh:** [Mô tả chi tiết âm thanh bằng Tiếng Việt]
+            **Lời thoại / Dẫn chuyện (Bằng ${language}):** [Nội dung kịch bản]
+            **Gợi ý Hình ảnh:** [Mô tả hình ảnh bằng Tiếng Việt, tập trung vào phong cách Sepia, Độ tương phản cao]
 
-            **ERA SETTING:** Strictly 1800s - 1950s. No modern tech. Only lanterns, bolt-action rifles, horses, or early radio/telegraphs.
-
-            **SCRIPT FORMAT:**
-            **[SECTION NAME]**
-            **(Timestamp)**
-            **Audio Cues:** [Detailed soundscape instructions]
-            **Dialogue (Survivor's POV):** [Atmospheric, gritty narration]
-            **Visual Suggestions:** [AI Image/Video prompt-style descriptions focusing on Sepia, High-Contrast, Scale]
-
-            **Length:** Approximately ${wordCount} words.
-            **Language:** Entirely in ${language}. Translate the title if necessary.
+            **Độ dài:** Khoảng ${wordCount} từ.
             
             ${outlineInstruction}
-            Keywords to integrate: "${keywords || 'None'}".
-
-            Generate the Dark Frontiers masterpiece now.
+            Từ khóa: "${keywords || 'Không có'}".
         `;
     } else if (scriptType === 'Podcast') {
         const speakersInstruction = numberOfSpeakers === 'Auto' ? '2-4 speakers' : `${numberOfSpeakers} speakers`;
-        prompt = `Expert Podcast scriptwriter. Title: "${title}". Language: ${language}. ${outlineInstruction}. Word count: ${wordCount}. ${speakersInstruction}. Include names, intro/outro cues, and clear segments. Format in ${language}.`;
+        prompt = `Expert Podcast scriptwriter. Title: "${title}". Content in ${language}. Labels in Vietnamese. ${outlineInstruction}. Word count: ${wordCount}. ${speakersInstruction}.`;
     } else {
-        prompt = `Expert YouTube scriptwriter. "Addictive Video Formula". Title: "${title}". Language: ${language}. ${outlineInstruction}. Word count: ${wordCount}. Style: ${style}, Expression: ${expression}. Format with HOOK, PROMISE, CONTENT, BIG REWARD, LINK. Include visual cues and dialogue in ${language}.`;
+        prompt = `Expert YouTube scriptwriter. Title: "${title}". Content in ${language}. Labels/Cues in Vietnamese. ${outlineInstruction}. Word count: ${wordCount}. Style: ${style}, Expression: ${expression}. Format with HOOK, PROMISE, CONTENT, BIG REWARD, LINK.`;
     }
 
     try {
@@ -220,20 +211,31 @@ export const generateScriptOutline = async (params: GenerationParams, provider: 
     const { title, outlineContent, targetAudience, wordCount, isDarkFrontiers } = params;
     const language = targetAudience;
     const prompt = `
-        Expert YouTube scriptwriter. Generate a detailed outline for a long-form video.
-        Title: "${title}"
-        Language: ${language}
-        Target Length: ${wordCount} words.
-        ${isDarkFrontiers ? "MODE: Dark Frontiers Horror strategy (Hook, Slow Burn, Siege, Climax, Scar)." : ""}
-        Break into logical segments with key talking points. Use markdown.
+        Bạn là chuyên gia biên kịch YouTube. Hãy tạo một dàn ý CHI TIẾT cho một video dài.
+        Tiêu đề: "${title}"
+        Ngôn ngữ nội dung: ${language}
+        Ngôn ngữ tiêu đề phần và tóm tắt: Tiếng Việt.
+        Độ dài mục tiêu: ${wordCount} từ.
+        ${isDarkFrontiers ? "CHẾ ĐỘ: Dark Frontiers (Mở đầu, Khởi đầu, Vòng vây, Cao trào, Dấu vết)." : ""}
+        
+        YÊU CẦU:
+        Chia kịch bản thành các PHẦN rõ ràng. Mỗi phần hãy trình bày theo định dạng:
+        ## [Tên Phần]
+        **Tóm tắt nội dung:** [1-2 câu tóm tắt những gì sẽ xảy ra trong phần này]
     `;
 
     try {
         const outline = await callApi(prompt, provider, model);
-        return `### Dàn Ý Chi Tiết Cho Kịch Bản\n\n---\n\n` + outline;
+        return `### Dàn Ý Chi Tiết Cho Kịch Bản\n\nĐây là cấu trúc dự kiến cho video dài của bạn. Hãy nhấn nút "Bắt đầu tạo kịch bản đầy đủ" bên dưới để AI viết từng phần.\n\n---\n\n` + outline;
     } catch (error) {
         throw handleApiError(error, 'tạo dàn ý');
     }
+};
+
+export const parseOutlineIntoSegments = (outline: string): string[] => {
+    // Splits by "## " which is the markdown header for sections
+    const segments = outline.split(/## /).filter(s => s.trim() !== '' && !s.includes('### Dàn Ý'));
+    return segments.map(s => '## ' + s.trim());
 };
 
 export const generateTopicSuggestions = async (theme: string, provider: AiProvider, model: string): Promise<TopicSuggestionItem[]> => {
@@ -279,9 +281,38 @@ export const reviseScript = async (originalScript: string, revisionInstruction: 
     }
 };
 
-export const generateScriptPart = async (fullOutline: string, previousPartsScript: string, currentPartOutline: string, params: Omit<GenerationParams, 'title' | 'outlineContent'>, provider: AiProvider, model: string): Promise<string> => {
-    const { targetAudience, styleOptions, wordCount, isDarkFrontiers } = params;
-    const prompt = `Write part for outline segment: "${currentPartOutline}". Context: ${fullOutline}. Previous text: """${previousPartsScript}""". Language: ${targetAudience}. Style: ${isDarkFrontiers ? 'Dark Frontiers Horror' : styleOptions.style}. Target words for this part: ${Math.round(parseInt(wordCount) / 5)}. Return ONLY content.`;
+export const generateScriptPart = async (fullOutline: string, previousPartsScript: string, currentPartOutline: string, params: GenerationParams, provider: AiProvider, model: string): Promise<string> => {
+    const { targetAudience, styleOptions, wordCount, isDarkFrontiers, title } = params;
+    
+    let prompt: string;
+    if (isDarkFrontiers) {
+        prompt = `
+            Bạn đang viết PHẦN TIẾP THEO cho kịch bản "Dark Frontiers" có tiêu đề "${title}".
+            
+            **DÀN Ý TOÀN BỘ:** 
+            ${fullOutline}
+
+            **PHẦN BẠN CẦN VIẾT NGAY BÂY GIỜ:** 
+            ${currentPartOutline}
+
+            **BỐI CẢNH CÁC PHẦN TRƯỚC (NẾU CÓ):**
+            ${previousPartsScript.slice(-1000)}
+
+            **YÊU CẦU:**
+            - Ngôn ngữ nội dung: ${targetAudience}
+            - Ngôn ngữ nhãn (Cues Âm thanh, Gợi ý Hình ảnh...): Tiếng Việt
+            - Phong cách: Dark Frontiers Horror (1st person POV, gritty, ominous).
+            - Độ dài phần này: Khoảng ${Math.round(parseInt(wordCount) / 5)} từ.
+            - Trình bày đầy đủ: Tên phần, Cues âm thanh, Lời thoại, Gợi ý hình ảnh.
+        `;
+    } else {
+        prompt = `Write the content for this specific part of a YouTube script titled "${title}". 
+        Outline of this part: "${currentPartOutline}". 
+        Full video structure: "${fullOutline}". 
+        Content must be in ${targetAudience}. Metadata/Labels in Vietnamese. 
+        Style: ${styleOptions.style}. Tone: ${styleOptions.expression}.`;
+    }
+
     try {
         return await callApi(prompt, provider, model);
     } catch (error) {
@@ -322,7 +353,6 @@ export const generateAllVisualPrompts = async (script: string, provider: AiProvi
 export const summarizeScriptForScenes = async (script: string, provider: AiProvider, model: string, config: SummarizeConfig): Promise<ScriptPartSummary[]> => {
     const { scenarioType } = config;
     const prompt = `Summarize script into visual scenes. Type: ${scenarioType}. Script: """${script}"""`;
-    // Specialized scenarios use standard generation logic but with specialized instructions in summarizeScriptForScenes in actual implementation
     try {
         return parseVisualSceneAssistantOutput(await callApi(prompt, provider, model));
     } catch (error) {

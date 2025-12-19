@@ -12,7 +12,7 @@ import { SavedIdeasModal } from './components/SavedIdeasModal';
 import { SideToolsPanel } from './components/SideToolsPanel';
 import { TtsModal } from './components/TtsModal';
 import { ScoreModal } from './components/ScoreModal';
-import { generateScript, generateScriptOutline, generateTopicSuggestions, reviseScript, generateScriptPart, extractDialogue, generateKeywordSuggestions, validateApiKey, generateVisualPrompt, generateAllVisualPrompts, summarizeScriptForScenes, suggestStyleOptions, parseIdeasFromFile, getElevenlabsVoices, generateElevenlabsTts, scoreScript, generateSingleVideoPrompt } from './services/aiService';
+import { generateScript, generateScriptOutline, generateTopicSuggestions, reviseScript, generateScriptPart, extractDialogue, generateKeywordSuggestions, validateApiKey, generateVisualPrompt, generateAllVisualPrompts, summarizeScriptForScenes, suggestStyleOptions, parseIdeasFromFile, getElevenlabsVoices, generateElevenlabsTts, scoreScript, generateSingleVideoPrompt, parseOutlineIntoSegments } from './services/aiService';
 import type { StyleOptions, FormattingOptions, LibraryItem, GenerationParams, VisualPrompt, AllVisualPromptsResult, ScriptPartSummary, ScriptType, NumberOfSpeakers, CachedData, TopicSuggestionItem, SavedIdea, AiProvider, WordCountStats, ElevenlabsVoice, SummarizeConfig, SceneSummary } from './types';
 import { STYLE_OPTIONS, LANGUAGE_OPTIONS, GEMINI_MODELS } from './constants';
 import { CogIcon } from './components/icons/CogIcon';
@@ -30,19 +30,6 @@ const YoutubeLogoIcon: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     <path d="M11.2 14.286V5.714L18.453 10 11.2 14.286z" fill="#FFFFFF"/>
   </svg>
 );
-
-const calculateWordCountsFromDialogue = (dialogueObject: Record<string, string>): WordCountStats => {
-    const countWords = (text: string): number => {
-        if (!text) return 0;
-        return text.trim().split(/\s+/).filter(Boolean).length;
-    };
-    const sections = Object.entries(dialogueObject).map(([title, content]) => ({
-        title,
-        count: countWords(content)
-    }));
-    const total = sections.reduce((sum, section) => sum + section.count, 0);
-    return { sections, total };
-};
 
 const App: React.FC = () => {
   const [title, setTitle] = useState<string>('');
@@ -102,6 +89,7 @@ const App: React.FC = () => {
   const [isGeneratingSequentially, setIsGeneratingSequentially] = useState<boolean>(false);
   const [outlineParts, setOutlineParts] = useState<string[]>([]);
   const [currentPartIndex, setCurrentPartIndex] = useState<number>(0);
+  const [fullOutlineText, setFullOutlineText] = useState<string>('');
 
   const [isDialogueModalOpen, setIsDialogueModalOpen] = useState<boolean>(false);
   const [extractedDialogue, setExtractedDialogue] = useState<Record<string, string> | null>(null);
@@ -217,6 +205,9 @@ const App: React.FC = () => {
     setWordCountStats(null);
     setRevisionCount(0);
     setScriptScore(null);
+    setIsGeneratingSequentially(false);
+    setOutlineParts([]);
+    setCurrentPartIndex(0);
   };
 
   const handleGenerateScript = useCallback(async () => {
@@ -227,8 +218,6 @@ const App: React.FC = () => {
     setIsLoading(true);
     setError(null);
     setGeneratedScript('');
-    setIsGeneratingSequentially(false);
-    setRevisionCount(0);
     resetCachesAndStates();
 
     const finalWordCount = lengthType === 'duration' && videoDuration
@@ -250,10 +239,11 @@ const App: React.FC = () => {
     };
 
     try {
-      const isLongScript = parseInt(finalWordCount, 10) > 1000 && scriptType === 'Video' && !isDarkFrontiers;
+      const isLongScript = parseInt(finalWordCount, 10) >= 1000;
       if (isLongScript) {
         const outline = await generateScriptOutline(params, aiProvider, selectedModel);
         setGeneratedScript(outline);
+        setFullOutlineText(outline);
       } else {
         const script = await generateScript(params, aiProvider, selectedModel);
         setGeneratedScript(script);
@@ -264,6 +254,61 @@ const App: React.FC = () => {
       setIsLoading(false);
     }
   }, [title, outlineContent, targetAudience, styleOptions, keywords, formattingOptions, wordCount, scriptParts, scriptType, numberOfSpeakers, lengthType, videoDuration, aiProvider, selectedModel, isDarkFrontiers]);
+
+  const handleStartSequentialGenerate = useCallback(() => {
+    if (!generatedScript) return;
+    const parts = parseOutlineIntoSegments(generatedScript);
+    if (parts.length === 0) {
+        setError('Không tìm thấy cấu trúc phần trong dàn ý. Vui lòng thử lại.');
+        return;
+    }
+    setOutlineParts(parts);
+    setCurrentPartIndex(0);
+    setIsGeneratingSequentially(true);
+    setGeneratedScript('--- BẮT ĐẦU TẠO KỊCH BẢN CHI TIẾT ---\n\n');
+  }, [generatedScript]);
+
+  const handleGenerateNextPart = useCallback(async () => {
+    if (!isGeneratingSequentially || currentPartIndex >= outlineParts.length) return;
+
+    setIsLoading(true);
+    const currentOutlinePart = outlineParts[currentPartIndex];
+    
+    const finalWordCount = lengthType === 'duration' && videoDuration
+      ? (parseInt(videoDuration, 10) * 150).toString()
+      : wordCount;
+
+    const params: GenerationParams = { 
+        title, 
+        outlineContent, 
+        targetAudience, 
+        styleOptions, 
+        keywords, 
+        formattingOptions, 
+        wordCount: finalWordCount, 
+        scriptParts, 
+        scriptType, 
+        numberOfSpeakers,
+        isDarkFrontiers 
+    };
+
+    try {
+        const partContent = await generateScriptPart(
+            fullOutlineText, 
+            generatedScript, 
+            currentOutlinePart, 
+            params, 
+            aiProvider, 
+            selectedModel
+        );
+        setGeneratedScript(prev => prev + partContent + '\n\n---\n\n');
+        setCurrentPartIndex(prev => prev + 1);
+    } catch (err) {
+        setError(err instanceof Error ? err.message : 'Lỗi khi tạo phần tiếp theo.');
+    } finally {
+        setIsLoading(false);
+    }
+  }, [isGeneratingSequentially, currentPartIndex, outlineParts, title, outlineContent, targetAudience, styleOptions, keywords, formattingOptions, wordCount, scriptParts, scriptType, numberOfSpeakers, lengthType, videoDuration, aiProvider, selectedModel, isDarkFrontiers, fullOutlineText, generatedScript]);
 
   const handleSaveApiKeys = (keysToSave: Record<AiProvider, string[]>) => setApiKeys(keysToSave);
   const handleSaveToLibrary = useCallback(() => {
@@ -320,7 +365,6 @@ const App: React.FC = () => {
                     if (newState) {
                         setThemeColor('#f59e0b');
                         setStyleOptions({ expression: 'Ominous', style: 'Cinematic Horror' });
-                        // Update default settings for Dark Frontiers mode
                         setTargetAudience('English');
                         setFormattingOptions(prev => ({
                             ...prev,
@@ -329,7 +373,7 @@ const App: React.FC = () => {
                         }));
                     } else {
                         setThemeColor('#38bdf8');
-                        setTargetAudience(LANGUAGE_OPTIONS[0].value); // Default back to Vietnamese
+                        setTargetAudience(LANGUAGE_OPTIONS[0].value);
                         setFormattingOptions(prev => ({
                             ...prev,
                             bullets: true,
@@ -382,7 +426,11 @@ const App: React.FC = () => {
         <div className="lg:col-span-6">
           <OutputDisplay
             script={generatedScript} isLoading={isLoading} error={error}
-            onStartSequentialGenerate={() => {}} isGeneratingSequentially={false} onGenerateNextPart={() => {}} currentPart={0} totalParts={0}
+            onStartSequentialGenerate={handleStartSequentialGenerate} 
+            isGeneratingSequentially={isGeneratingSequentially} 
+            onGenerateNextPart={handleGenerateNextPart} 
+            currentPart={currentPartIndex} 
+            totalParts={outlineParts.length}
             revisionCount={revisionCount} onGenerateVisualPrompt={() => {}} onGenerateAllVisualPrompts={() => {}} isGeneratingAllVisualPrompts={false}
             scriptType={scriptType} hasGeneratedAllVisualPrompts={false} visualPromptsCache={new Map()} onImportScript={() => {}}
           />
