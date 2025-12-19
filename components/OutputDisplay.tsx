@@ -29,7 +29,7 @@ interface OutputDisplayProps {
   isGeneratingAllVisualPrompts: boolean;
   scriptType: ScriptType;
   hasGeneratedAllVisualPrompts: boolean;
-  visualPromptsCache: Map<string, VisualPrompt>;
+  visualPromptsCache: Map<string, VisualPrompt[]>;
   onImportScript: (file: File) => void;
   autoContinue?: boolean;
   setAutoContinue?: (val: boolean) => void;
@@ -212,7 +212,7 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
                                     ) : (
                                         <>
                                           <CameraIcon className="w-4 h-4" />
-                                          <span>Tạo Prompt Ảnh/Video</span>
+                                          <span>Tạo 4 Prompts Hình ảnh</span>
                                           {hasGeneratedPrompt && <CheckIcon className="w-4 h-4 text-green-400 ml-1" />}
                                         </>
                                     )}

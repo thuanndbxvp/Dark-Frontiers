@@ -253,8 +253,19 @@ export const generateKeywordSuggestions = async (title: string, provider: AiProv
     }
 };
 
-export const generateVisualPrompt = async (sceneDescription: string, provider: AiProvider, model: string): Promise<VisualPrompt> => {
-    const prompt = `Tạo prompt hình ảnh cho cảnh: "${sceneDescription}". Style: Historical Horror. JSON: { "english": "...", "vietnamese": "..." }`;
+export const generateVisualPrompt = async (sceneDescription: string, provider: AiProvider, model: string): Promise<VisualPrompt[]> => {
+    const prompt = `Bạn là chuyên gia tạo prompt hình ảnh cho Midjourney/Leonardo.
+    Dựa trên trích đoạn kịch bản sau, hãy tạo ra đúng 4 prompt hình ảnh chi tiết để mô tả các khoảnh khắc quan trọng nhất.
+    
+    PHONG CÁCH: Kinh dị dã sử (Historical Horror), điện ảnh, u ám (Ominous), gai góc (Gritty).
+    BỐI CẢNH: 1800s-1950s (Đèn dầu, tuyết rơi, thám hiểm, trang phục cổ điển).
+    CHI TIẾT: Ánh sáng chiaroscuro u tối, sương mù dày đặc, kết cấu chân thực (gỗ mục, sương giá, vết máu).
+    
+    TRẢ VỀ JSON duy nhất là một mảng gồm 4 đối tượng: [ { "english": "...", "vietnamese": "..." }, ... ]
+    
+    TRÍCH ĐOẠN KỊCH BẢN:
+    "${sceneDescription}"`;
+
     try {
         const response = await callApi(prompt, provider, model);
         const cleaned = response.replace(/```json|```/g, '').trim();

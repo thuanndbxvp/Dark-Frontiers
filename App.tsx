@@ -105,7 +105,7 @@ const App: React.FC = () => {
   const [apiKeys, setApiKeys] = useState<Record<AiProvider, string[]>>({ gemini: [], openai: [], elevenlabs: [] });
 
   const [isVisualPromptModalOpen, setIsVisualPromptModalOpen] = useState<boolean>(false);
-  const [visualPrompt, setVisualPrompt] = useState<VisualPrompt | null>(null);
+  const [visualPrompts, setVisualPrompts] = useState<VisualPrompt[] | null>(null);
   const [isGeneratingVisualPrompt, setIsGeneratingVisualPrompt] = useState<boolean>(false);
   const [visualPromptError, setVisualPromptError] = useState<string | null>(null);
 
@@ -132,7 +132,7 @@ const App: React.FC = () => {
   const [aiProvider, setAiProvider] = useState<AiProvider>('gemini');
   const [selectedModel, setSelectedModel] = useState<string>(GEMINI_MODELS[0].value);
 
-  const [visualPromptsCache, setVisualPromptsCache] = useState<Map<string, VisualPrompt>>(new Map());
+  const [visualPromptsCache, setVisualPromptsCache] = useState<Map<string, VisualPrompt[]>>(new Map());
   const [allVisualPromptsCache, setAllVisualPromptsCache] = useState<AllVisualPromptsResult[] | null>(null);
   const [summarizedScriptCache, setSummarizedScriptCache] = useState<ScriptPartSummary[] | null>(null);
   const [extractedDialogueCache, setExtractedDialogueCache] = useState<Record<string, string> | null>(null);
@@ -439,17 +439,21 @@ const App: React.FC = () => {
   }, [generatedScript, aiProvider, selectedModel]);
 
   const handleGenerateVisualPrompt = useCallback(async (scene: string) => {
+    setIsGeneratingVisualPrompt(true);
+    setIsVisualPromptModalOpen(true);
+    setVisualPromptError(null);
     try {
-        const prompt = await generateVisualPrompt(scene, aiProvider, selectedModel);
+        const prompts = await generateVisualPrompt(scene, aiProvider, selectedModel);
         setVisualPromptsCache(prev => {
             const next = new Map(prev);
-            next.set(scene, prompt);
+            next.set(scene, prompts);
             return next;
         });
-        setVisualPrompt(prompt);
-        setIsVisualPromptModalOpen(true);
+        setVisualPrompts(prompts);
     } catch (err) {
-        setError(err instanceof Error ? err.message : 'Lỗi tạo prompt hình ảnh.');
+        setVisualPromptError(err instanceof Error ? err.message : 'Lỗi tạo prompt hình ảnh.');
+    } finally {
+        setIsGeneratingVisualPrompt(false);
     }
   }, [aiProvider, selectedModel]);
 
@@ -697,7 +701,7 @@ const App: React.FC = () => {
       <SavedIdeasModal isOpen={isSavedIdeasModalOpen} onClose={() => setIsSavedIdeasModalOpen(false)} ideas={savedIdeas} onLoad={(i) => { setTitle(i.title); setOutlineContent(i.outline); setIsSavedIdeasModalOpen(false); }} onDelete={(id) => setSavedIdeas(prev => prev.filter(i => i.id !== id))} />
       <DialogueModal isOpen={isDialogueModalOpen} onClose={() => setIsDialogueModalOpen(false)} dialogue={extractedDialogue} isLoading={isExtracting} error={extractionError} />
       <ScoreModal isOpen={isScoreModalOpen} onClose={() => setIsScoreModalOpen(false)} score={scriptScore} isLoading={isScoring} error={scoringError} />
-      <VisualPromptModal isOpen={isVisualPromptModalOpen} onClose={() => setIsVisualPromptModalOpen(false)} prompt={visualPrompt} isLoading={isGeneratingVisualPrompt} error={visualPromptError} />
+      <VisualPromptModal isOpen={isVisualPromptModalOpen} onClose={() => setIsVisualPromptModalOpen(false)} prompts={visualPrompts} isLoading={isGeneratingVisualPrompt} error={visualPromptError} />
       <AllVisualPromptsModal isOpen={isAllVisualPromptsModalOpen} onClose={() => setIsAllVisualPromptsModalOpen(false)} prompts={allVisualPrompts} isLoading={isGeneratingAllVisualPrompts} error={allVisualPromptsError} />
       <SummarizeModal isOpen={isSummarizeModalOpen} onClose={() => setIsSummarizeModalOpen(false)} summary={summarizedScript} isLoading={isSummarizing} error={summarizationError} scriptType={scriptType} title={title} onGenerate={handleSummarizeScript} onGenerateVideoPrompt={handleGenerateVideoPromptLocal} />
       <TtsModal isOpen={isTtsModalOpen} onClose={() => setIsTtsModalOpen(false)} dialogue={extractedDialogue} voices={ttsVoices} isLoadingVoices={isFetchingTtsVoices} onGenerate={handleGenerateTtsLocal} error={ttsModalError} />
