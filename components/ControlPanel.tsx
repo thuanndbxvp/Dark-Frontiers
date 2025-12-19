@@ -132,7 +132,9 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     
     const idea = DARK_FRONTIERS_IDEAS.find(i => i.title === selectedTitle);
     if (idea) {
-        setTitle(idea.title);
+        // Loại bỏ số thứ tự ở đầu tiêu đề (VD: "1. Tiêu đề" -> "Tiêu đề")
+        const cleanedTitle = idea.title.replace(/^\d+\.\s*/, '');
+        setTitle(cleanedTitle);
         setOutlineContent(idea.outline);
     }
   };

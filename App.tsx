@@ -315,12 +315,26 @@ const App: React.FC = () => {
         <div className="flex-1 flex gap-4 items-center">
             <button 
                 onClick={() => {
-                    setIsDarkFrontiers(!isDarkFrontiers);
-                    if (!isDarkFrontiers) {
+                    const newState = !isDarkFrontiers;
+                    setIsDarkFrontiers(newState);
+                    if (newState) {
                         setThemeColor('#f59e0b');
                         setStyleOptions({ expression: 'Ominous', style: 'Cinematic Horror' });
+                        // Update default settings for Dark Frontiers mode
+                        setTargetAudience('English');
+                        setFormattingOptions(prev => ({
+                            ...prev,
+                            bullets: false,
+                            bold: false
+                        }));
                     } else {
                         setThemeColor('#38bdf8');
+                        setTargetAudience(LANGUAGE_OPTIONS[0].value); // Default back to Vietnamese
+                        setFormattingOptions(prev => ({
+                            ...prev,
+                            bullets: true,
+                            bold: true
+                        }));
                     }
                 }}
                 className={`px-4 py-2 rounded-lg font-bold text-xs transition-all flex items-center gap-2 border ${isDarkFrontiers ? 'bg-amber-900/40 text-amber-500 border-amber-500 shadow-lg shadow-amber-900/20' : 'bg-secondary text-text-secondary border-border hover:text-text-primary'}`}
