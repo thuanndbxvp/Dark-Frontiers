@@ -1,3 +1,4 @@
+
 import type { AiProvider } from '../types';
 
 interface KeyRequest {
@@ -26,7 +27,7 @@ class ApiKeyManager {
         for (const provider of Object.keys(newKeys) as AiProvider[]) {
             this.allKeys.set(provider, newKeys[provider] || []);
         }
-        // After updating keys, process any waiting tasks
+        // Sau khi cập nhật key, xử lý các tác vụ đang chờ
         this.allKeys.forEach((_, provider) => this.processQueue(provider));
     }
 
@@ -41,6 +42,37 @@ class ApiKeyManager {
                 reject(new Error(`Provider ${provider} không được hỗ trợ.`));
             }
         });
+    }
+
+    /**
+     * Báo cáo key bị lỗi (hết quota, sai key...).
+     * Key lỗi sẽ bị đẩy xuống cuối danh sách để key tiếp theo được ưu tiên.
+     */
+    public reportError(provider: AiProvider, failedKey: string) {
+        const keys = this.allKeys.get(provider) || [];
+        if (keys.includes(failedKey)) {
+            // Đẩy key lỗi xuống cuối mảng
+            const filtered = keys.filter(k => k !== failedKey);
+            const updated = [...filtered, failedKey];
+            this.allKeys.set(provider, updated);
+
+            // Cập nhật lại localStorage để thay đổi có hiệu lực lâu dài
+            try {
+                const savedApiKeys = localStorage.getItem('ai-api-keys');
+                if (savedApiKeys) {
+                    const parsed = JSON.parse(savedApiKeys);
+                    parsed[provider] = updated;
+                    localStorage.setItem('ai-api-keys', JSON.stringify(parsed));
+                }
+            } catch (e) {
+                console.error("Lỗi khi cập nhật localStorage trong reportError", e);
+            }
+
+            // Phát sự kiện thông báo key đã được xoay
+            window.dispatchEvent(new CustomEvent('apiKeyRotated', { 
+                detail: { provider, failedKey } 
+            }));
+        }
     }
 
     private processQueue(provider: AiProvider) {
@@ -58,14 +90,14 @@ class ApiKeyManager {
 
                 const releaseKey = () => {
                     this.activeKeys.get(provider)?.delete(availableKey);
-                    // Process the next item in the queue after releasing a key
+                    // Xử lý mục tiếp theo trong hàng đợi sau khi giải phóng key
                     this.processQueue(provider);
                 };
 
                 request.resolve({ apiKey: availableKey, releaseKey });
             }
         } else if ((this.allKeys.get(provider) || []).length === 0) {
-            // If there are no keys at all, reject all waiting promises for this provider
+            // Nếu không có key nào, từ chối tất cả các yêu cầu đang chờ
             while (queue.length > 0) {
                 const request = queue.shift();
                 request?.reject(new Error(`Không tìm thấy API Key cho ${provider}. Vui lòng thêm key.`));

@@ -205,42 +205,83 @@ export const parseIdeasFromFile = async (content: string, provider: AiProvider, 
     } catch (e) { throw handleApiError(e, 'phân tích file'); }
 };
 
+/**
+ * Lấy danh sách giọng nói ElevenLabs với cơ chế tự động xoay key khi lỗi
+ */
 export const getElevenlabsVoices = async (): Promise<ElevenlabsVoice[]> => {
-    const { apiKey, releaseKey } = await apiKeyManager.getAvailableKey('elevenlabs');
-    try {
-        const res = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': apiKey } });
-        if (!res.ok) throw new Error("Không thể tải danh sách giọng nói.");
-        const data = await res.json();
-        return data.voices || [];
-    } finally { releaseKey(); }
+    const savedKeysJson = localStorage.getItem('ai-api-keys');
+    const totalKeys = savedKeysJson ? (JSON.parse(savedKeysJson).elevenlabs?.length || 0) : 0;
+    
+    // Thử tối đa bằng số lượng key hiện có
+    for (let attempt = 0; attempt < Math.max(1, totalKeys); attempt++) {
+        const { apiKey, releaseKey } = await apiKeyManager.getAvailableKey('elevenlabs');
+        try {
+            const res = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': apiKey } });
+            
+            if (res.status === 401 || res.status === 429) {
+                // Key hết hạn hoặc hết quota, báo cáo lỗi để xoay key
+                apiKeyManager.reportError('elevenlabs', apiKey);
+                releaseKey();
+                continue; // Thử với key tiếp theo
+            }
+
+            if (!res.ok) throw new Error("Không thể tải danh sách giọng nói.");
+            const data = await res.json();
+            releaseKey();
+            return data.voices || [];
+        } catch (error) {
+            releaseKey();
+            if (attempt === totalKeys - 1) throw error;
+        }
+    }
+    throw new Error("Tất cả API Key ElevenLabs đều bị lỗi hoặc hết hạn.");
 };
 
+/**
+ * Tạo TTS ElevenLabs với cơ chế tự động xoay key khi lỗi
+ */
 export const generateElevenlabsTts = async (text: string, voiceId: string): Promise<string> => {
-    const { apiKey, releaseKey } = await apiKeyManager.getAvailableKey('elevenlabs');
-    try {
-        const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json', 
-                'xi-api-key': apiKey,
-                'accept': 'audio/mpeg'
-            },
-            body: JSON.stringify({ 
-                text, 
-                model_id: 'eleven_multilingual_v2',
-                voice_settings: { stability: 0.5, similarity_boost: 0.75 }
-            })
-        });
+    const savedKeysJson = localStorage.getItem('ai-api-keys');
+    const totalKeys = savedKeysJson ? (JSON.parse(savedKeysJson).elevenlabs?.length || 0) : 0;
 
-        if (!res.ok) {
-            const errorData = await res.json().catch(() => ({}));
-            throw new Error(errorData.detail?.message || `Lỗi TTS: ${res.status}`);
+    for (let attempt = 0; attempt < Math.max(1, totalKeys); attempt++) {
+        const { apiKey, releaseKey } = await apiKeyManager.getAvailableKey('elevenlabs');
+        try {
+            const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'xi-api-key': apiKey,
+                    'accept': 'audio/mpeg'
+                },
+                body: JSON.stringify({ 
+                    text, 
+                    model_id: 'eleven_multilingual_v2',
+                    voice_settings: { stability: 0.5, similarity_boost: 0.75 }
+                })
+            });
+
+            if (res.status === 401 || res.status === 429) {
+                apiKeyManager.reportError('elevenlabs', apiKey);
+                releaseKey();
+                continue;
+            }
+
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.detail?.message || `Lỗi TTS: ${res.status}`);
+            }
+
+            const blob = await res.blob();
+            releaseKey();
+            if (blob.size < 100) throw new Error("Dữ liệu âm thanh nhận được không hợp lệ.");
+            return URL.createObjectURL(blob);
+        } catch (error) {
+            releaseKey();
+            if (attempt === totalKeys - 1) throw error;
         }
-
-        const blob = await res.blob();
-        if (blob.size < 100) throw new Error("Dữ liệu âm thanh nhận được không hợp lệ.");
-        return URL.createObjectURL(blob);
-    } finally { releaseKey(); }
+    }
+    throw new Error("Tất cả API Key ElevenLabs đều bị lỗi hoặc hết quota.");
 };
 
 export const scoreScript = async (script: string, provider: AiProvider, model: string): Promise<string> => {
