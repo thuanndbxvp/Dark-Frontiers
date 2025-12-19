@@ -389,14 +389,23 @@ const App: React.FC = () => {
     }
   }, [generatedScript, revisionPrompt, title, outlineContent, targetAudience, styleOptions, keywords, formattingOptions, wordCount, scriptParts, scriptType, numberOfSpeakers, isDarkFrontiers, aiProvider, selectedModel]);
 
-  // Helper function to clean text for word counting
+  // Helper function to clean text for word counting and TTS readiness
   const cleanTextForCount = (text: string): string => {
     return text
+        .replace(/\*\*\*+/g, '') // Remove visual separators like ***
         .replace(/\[.*?\]/g, '') // Remove technical notes [SFX], [Scene]
-        .replace(/\*\*.*?\*\*/g, (match) => match.slice(2, -2)) // Unbold
-        .replace(/\*.*?\*/g, (match) => match.slice(1, -1)) // Unitalic
+        .replace(/\*\*\s*\(.*?\)\s*\*\*/g, '') // Remove bold tone instructions like **(Narrator Voice)**
+        .replace(/\*\s*\(.*?\)\s*\*/g, '') // Remove italic tone instructions like *(Acting instructions)*
+        .replace(/\(.*?Voice.*?\)/gi, '') // Remove non-markdown voice notes in parentheses
+        .replace(/\*\*.*?\*\*/g, (match) => match.slice(2, -2)) // Unbold remaining actual text
+        .replace(/\*.*?\*/g, (match) => match.slice(1, -1)) // Unitalic remaining actual text
+        .replace(/^Visual:.*$/gim, '') // Remove Visual: lines
+        .replace(/^Audio:.*$/gim, '') // Remove Audio: lines
+        .replace(/^SFX:.*$/gim, '') // Remove SFX: lines
+        .replace(/^Scene:.*$/gim, '') // Remove Scene: lines
         .replace(/#+.*$/gm, '') // Remove header lines
-        .replace(/\n+/g, ' ') // Replace newlines with spaces
+        .replace(/\n\s*\n/g, '\n') // Remove excessive empty lines
+        .replace(/\n+/g, ' ') // Replace newlines with spaces for an accurate word count flow
         .trim();
   };
 
@@ -410,26 +419,44 @@ const App: React.FC = () => {
         let dialogue: Record<string, string> = {};
 
         // OPTIMIZATION: Better Markdown parsing
-        const sections = generatedScript.split(/(?=^## .*?$|^### .*?$)/m).filter(s => s.trim() !== '' && !s.includes('---'));
+        const sections = generatedScript.split(/(?=^## .*?$|^### .*?$)/m).filter(s => s.trim() !== '' && !s.includes('---') && !s.includes('### Dàn Ý'));
         
-        if (sections.length > 1) {
+        if (sections.length > 0) {
             sections.forEach(s => {
                 const lines = s.split('\n');
                 const titleLine = lines[0].trim();
-                const title = titleLine.replace(/^#+\s+/, '').trim() || 'Phần không tên';
-                const content = lines.slice(1).join('\n').trim();
-                // Filter content to only spoken lines if it looks like a scene script
-                const filteredContent = content
-                    .split('\n')
-                    .filter(line => !line.trim().startsWith('[') && !line.trim().startsWith('Visual:') && !line.trim().startsWith('SFX:'))
+                const partTitle = titleLine.replace(/^#+\s+/, '').trim() || 'Phần không tên';
+                const contentLines = lines.slice(1);
+                
+                // Advanced line-by-line filtering for dialogue
+                const filteredContent = contentLines
+                    .filter(line => {
+                        const trimmed = line.trim();
+                        if (!trimmed) return false;
+                        if (trimmed === '***') return false;
+                        if (trimmed.startsWith('[') && trimmed.endsWith(']')) return false;
+                        if (/^Visual:|^SFX:|^Audio:|^Scene:|^Camera:/i.test(trimmed)) return false;
+                        if (/^\*\*\(.*?\)\*\*/.test(trimmed)) return false; // Filter instruction lines
+                        return true;
+                    })
+                    .map(line => {
+                        // Clean inline instructions like "(Narrator says: ...)" or bold annotations
+                        return line
+                            .replace(/\*\*\s*\(.*?\)\s*\*\*/g, '') 
+                            .replace(/\*\s*\(.*?\)\s*\*/g, '')
+                            .replace(/\*\*\*/g, '')
+                            .trim();
+                    })
+                    .filter(line => line.length > 0)
                     .join('\n')
                     .trim();
-                if (filteredContent) dialogue[title] = filteredContent;
+
+                if (filteredContent) dialogue[partTitle] = filteredContent;
             });
         }
 
         // FALLBACK: Use AI if local parsing is insufficient or didn't catch enough
-        if (Object.keys(dialogue).length < 2) {
+        if (Object.keys(dialogue).length === 0) {
             dialogue = await extractDialogue(generatedScript, aiProvider, selectedModel);
         }
         
@@ -721,6 +748,19 @@ const App: React.FC = () => {
     } catch (err) { setSuggestionError('Lỗi tạo gợi ý.'); } finally { setIsSuggesting(false); }
   }, [title, aiProvider, selectedModel]);
 
+  const handleDeleteTtsPart = useCallback((partTitle: string) => {
+    setTtsEditableDialogue(prev => {
+        const next = { ...prev };
+        delete next[partTitle];
+        return next;
+    });
+    setTtsGenerationState(prev => {
+        const next = { ...prev };
+        delete next[partTitle];
+        return next;
+    });
+  }, []);
+
   const hasApiKey = apiKeys[aiProvider] && apiKeys[aiProvider].length > 0;
 
   return (
@@ -857,6 +897,7 @@ const App: React.FC = () => {
           setEditableDialogue={setTtsEditableDialogue}
           generationState={ttsGenerationState}
           setGenerationState={setTtsGenerationState}
+          onDeletePart={handleDeleteTtsPart}
       />
     </div>
   );

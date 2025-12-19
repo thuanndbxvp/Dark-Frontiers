@@ -22,6 +22,7 @@ interface TtsModalProps {
   setEditableDialogue: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   generationState: Record<string, TtsGenerationStatus>;
   setGenerationState: React.Dispatch<React.SetStateAction<Record<string, TtsGenerationStatus>>>;
+  onDeletePart?: (partTitle: string) => void;
 }
 
 // Helper định dạng thời gian cho SRT: HH:mm:ss,mmm
@@ -182,7 +183,8 @@ export const TtsModal: React.FC<TtsModalProps> = ({
     editableDialogue,
     setEditableDialogue,
     generationState,
-    setGenerationState
+    setGenerationState,
+    onDeletePart
 }) => {
     const [selectedVoiceId, setSelectedVoiceId] = useState<string>('');
     const [customVoiceId, setCustomVoiceId] = useState<string>('');
@@ -496,14 +498,23 @@ export const TtsModal: React.FC<TtsModalProps> = ({
                             const state = generationState[partTitle] || { isLoading: false, audioUrl: null, duration: null, error: null };
                             const paddedIndex = (index + 1).toString().padStart(2, '0');
                             return (
-                                <div key={partTitle} className="bg-secondary p-4 rounded-lg border border-border">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <label className="block text-sm font-semibold text-text-primary uppercase tracking-wide">
+                                <div key={partTitle} className="bg-secondary p-4 rounded-lg border border-border relative group/card">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <label className="block text-sm font-semibold text-text-primary uppercase tracking-wide pr-8">
                                             <span className="text-accent mr-1">{index + 1}.</span> {partTitle}
                                         </label>
-                                        {state.audioUrl && (
-                                            <span className="text-[10px] font-bold text-green-400 bg-green-400/10 px-1.5 py-0.5 rounded">HOÀN TẤT</span>
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                            {state.audioUrl && (
+                                                <span className="text-[10px] font-bold text-green-400 bg-green-400/10 px-1.5 py-0.5 rounded">HOÀN TẤT</span>
+                                            )}
+                                            <button 
+                                                onClick={() => onDeletePart?.(partTitle)}
+                                                className="p-1.5 text-text-secondary hover:text-red-400 transition-colors bg-primary/40 rounded-md hover:bg-red-400/10"
+                                                title="Xóa phần này"
+                                            >
+                                                <TrashIcon className="w-4 h-4" />
+                                            </button>
+                                        </div>
                                     </div>
                                     <textarea
                                         value={text}

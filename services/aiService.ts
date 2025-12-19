@@ -90,7 +90,7 @@ export const validateApiKey = async (key: string, provider: AiProvider): Promise
     return false;
 };
 
-// --- DARK FRONTIERS DNA: REFINED FOR CINEMATIC AUDIO EXPERIENCE ---
+// --- DARK FRONTIERS DNA ---
 const DARK_FRONTIERS_DNA = `
 BẠN LÀ CONTENT OFFICER CHO KÊNH "DARK FRONTIERS". 
 TRIẾT LÝ: "Chúng ta bán Nỗi sợ về những điều chưa biết (Fear of the Unknown) núp bóng dưới vỏ bọc Lịch sử."
@@ -196,12 +196,14 @@ export const reviseScript = async (script: string, revisionPrompt: string, param
 
 export const extractDialogue = async (script: string, provider: AiProvider, model: string): Promise<Record<string, string>> => {
     const prompt = `NHIỆM VỤ: Trích xuất lời thoại SẠCH (Spoken text) từ kịch bản sau.
-    QUY TẮC:
-    1. LOẠI BỎ hoàn toàn các chỉ dẫn kỹ thuật như [SFX], [Scene], [Visual], [Audio].
-    2. LOẠI BỎ hoàn toàn các mô tả cảnh quay hoặc hành động nhân vật.
-    3. CHỈ GIỮ LẠI những lời thoại mà người dẫn chương trình (Narrator) hoặc nhân vật (Survivor) thực sự nói.
-    4. Giữ nguyên cấu trúc các phần chính theo tiêu đề ##.
-    5. ĐỊNH DẠNG ĐẦU RA: JSON với cấu trúc { "Tên Phần": "Toàn bộ lời thoại của phần đó" }.
+    
+    QUY TẮC NGHIÊM NGẶT:
+    1. LOẠI BỎ hoàn toàn các chỉ dẫn kỹ thuật như [SFX], [Scene], [Visual], [Audio], [Camera].
+    2. LOẠI BỎ hoàn toàn các dòng phân cách như *** hoặc ---.
+    3. LOẠI BỎ hoàn toàn các mô tả hành động, biểu cảm hoặc chỉ dẫn tông giọng trong ngoặc như **(Narrator Voice)**, *(Acting fear)*, (Whispering), v.v.
+    4. CHỈ GIỮ LẠI những nội dung mà người dẫn hoặc nhân vật sẽ THỰC SỰ NÓI TRÊN VIDEO.
+    5. Giữ nguyên cấu trúc các phần chính theo tiêu đề ##.
+    6. ĐỊNH DẠNG ĐẦU RA: JSON với cấu trúc { "Tên Phần": "Lời thoại sạch để đọc máy TTS" }.
     
     KỊCH BẢN CẦN TRÍCH XUẤT:
     ${script}`;
@@ -260,7 +262,7 @@ export const parseIdeasFromFile = async (content: string, provider: AiProvider, 
 };
 
 /**
- * Lấy danh sách giọng nói ElevenLabs với cơ chế tự động xoay key khi lỗi
+ * Lấy danh sách giọng nói ElevenLabs
  */
 export const getElevenlabsVoices = async (): Promise<ElevenlabsVoice[]> => {
     const savedKeysJson = localStorage.getItem('ai-api-keys');
@@ -307,7 +309,7 @@ export const getElevenlabsVoiceById = async (voiceId: string): Promise<Elevenlab
 };
 
 /**
- * Tạo TTS ElevenLabs với cơ chế tự động xoay key khi lỗi
+ * Tạo TTS ElevenLabs
  */
 export const generateElevenlabsTts = async (text: string, voiceId: string): Promise<string> => {
     const savedKeysJson = localStorage.getItem('ai-api-keys');
