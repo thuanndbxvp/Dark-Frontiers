@@ -394,6 +394,8 @@ const App: React.FC = () => {
     return text
         .replace(/\*\*\*+/g, '') // Remove visual separators like ***
         .replace(/\[.*?\]/g, '') // Remove technical notes [SFX], [Scene]
+        .replace(/\*\*\s*#+.*?\*\*/g, '') // Remove bolded headers like **## Title**
+        .replace(/^\s*\*\*#+.*?\*\*/gm, '') // Remove bolded headers starting lines
         .replace(/\*\*\s*\(.*?\)\s*\*\*/g, '') // Remove bold tone instructions like **(Narrator Voice)**
         .replace(/\*\s*\(.*?\)\s*\*/g, '') // Remove italic tone instructions like *(Acting instructions)*
         .replace(/\(.*?Voice.*?\)/gi, '') // Remove non-markdown voice notes in parentheses
@@ -418,14 +420,21 @@ const App: React.FC = () => {
     try {
         let dialogue: Record<string, string> = {};
 
-        // OPTIMIZATION: Better Markdown parsing
-        const sections = generatedScript.split(/(?=^## .*?$|^### .*?$)/m).filter(s => s.trim() !== '' && !s.includes('---') && !s.includes('### Dàn Ý'));
+        // OPTIMIZATION: Better Markdown parsing with support for **## pattern
+        const sections = generatedScript.split(/(?=^#+ .*?$|^### Dàn Ý|^#{0,3}\s*\*\*#+ .*?)/m)
+            .filter(s => s.trim() !== '' && !s.includes('---') && !s.includes('### Dàn Ý'));
         
         if (sections.length > 0) {
             sections.forEach(s => {
                 const lines = s.split('\n');
                 const titleLine = lines[0].trim();
-                const partTitle = titleLine.replace(/^#+\s+/, '').trim() || 'Phần không tên';
+                // Clean title from both # and **# markers
+                const partTitle = titleLine
+                    .replace(/^\*\*#+/, '')
+                    .replace(/\*\*/g, '')
+                    .replace(/^#+\s+/, '')
+                    .trim() || 'Phần không tên';
+                
                 const contentLines = lines.slice(1);
                 
                 // Advanced line-by-line filtering for dialogue
@@ -437,13 +446,15 @@ const App: React.FC = () => {
                         if (trimmed.startsWith('[') && trimmed.endsWith(']')) return false;
                         if (/^Visual:|^SFX:|^Audio:|^Scene:|^Camera:/i.test(trimmed)) return false;
                         if (/^\*\*\(.*?\)\*\*/.test(trimmed)) return false; // Filter instruction lines
+                        if (/^\*\*#+/.test(trimmed)) return false; // Filter bolded header lines
                         return true;
                     })
                     .map(line => {
-                        // Clean inline instructions like "(Narrator says: ...)" or bold annotations
+                        // Clean inline instructions or residual markdown
                         return line
                             .replace(/\*\*\s*\(.*?\)\s*\*\*/g, '') 
                             .replace(/\*\s*\(.*?\)\s*\*/g, '')
+                            .replace(/\*\*\s*#+.*?\*\*/g, '')
                             .replace(/\*\*\*/g, '')
                             .trim();
                     })
@@ -455,8 +466,11 @@ const App: React.FC = () => {
             });
         }
 
-        // FALLBACK: Use AI if local parsing is insufficient or didn't catch enough
-        if (Object.keys(dialogue).length === 0) {
+        // FALLBACK: Use AI if local parsing is insufficient or produced "dirty" results (too many markers left)
+        const totalChars = Object.values(dialogue).join('').length;
+        const hasMarkers = /#|\*\*|\[|\]/g.test(Object.values(dialogue).join(''));
+        
+        if (Object.keys(dialogue).length === 0 || (totalChars > 100 && hasMarkers)) {
             dialogue = await extractDialogue(generatedScript, aiProvider, selectedModel);
         }
         

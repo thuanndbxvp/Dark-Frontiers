@@ -195,15 +195,16 @@ export const reviseScript = async (script: string, revisionPrompt: string, param
 };
 
 export const extractDialogue = async (script: string, provider: AiProvider, model: string): Promise<Record<string, string>> => {
-    const prompt = `NHIỆM VỤ: Trích xuất lời thoại SẠCH (Spoken text) từ kịch bản sau.
+    const prompt = `NHIỆM VỤ: Trích xuất lời thoại SẠCH TUYỆT ĐỐI (Spoken text only) từ kịch bản sau.
     
-    QUY TẮC NGHIÊM NGẶT:
-    1. LOẠI BỎ hoàn toàn các chỉ dẫn kỹ thuật như [SFX], [Scene], [Visual], [Audio], [Camera].
-    2. LOẠI BỎ hoàn toàn các dòng phân cách như *** hoặc ---.
-    3. LOẠI BỎ hoàn toàn các mô tả hành động, biểu cảm hoặc chỉ dẫn tông giọng trong ngoặc như **(Narrator Voice)**, *(Acting fear)*, (Whispering), v.v.
-    4. CHỈ GIỮ LẠI những nội dung mà người dẫn hoặc nhân vật sẽ THỰC SỰ NÓI TRÊN VIDEO.
-    5. Giữ nguyên cấu trúc các phần chính theo tiêu đề ##.
-    6. ĐỊNH DẠNG ĐẦU RA: JSON với cấu trúc { "Tên Phần": "Lời thoại sạch để đọc máy TTS" }.
+    QUY TẮC NGHIÊM NGẶT (MUST FOLLOW):
+    1. LOẠI BỎ TRIỆT ĐỂ:
+       - Tất cả các ký hiệu điều hướng như ##, ###, ****, ---, ***.
+       - Tất cả tiêu đề phần như "THE HOOK", "**## THE SLOW BURN**".
+       - Tất cả các ghi chú kỹ thuật: [SFX], [Scene], Visual:, Audio:, Camera:, SFX:.
+       - Tất cả các ghi chú tông giọng hoặc hành động trong ngoặc: (Narrator Voice), (Whispering), (Action), **(Narrator)**.
+    2. CHỈ GIỮ LẠI: Nội dung văn bản mà con người thực sự ĐỌC THÀNH LỜI trong video.
+    3. ĐỊNH DẠNG ĐẦU RA: JSON object. Key là tên phần (VD: "Phần 1"), Value là văn bản SẠCH đã xử lý. 
     
     KỊCH BẢN CẦN TRÍCH XUẤT:
     ${script}`;
@@ -218,7 +219,7 @@ export const generateKeywordSuggestions = async (title: string, provider: AiProv
     try {
         const response = await callApi(prompt, provider, model);
         return response.split(',').map(k => k.trim());
-    } catch (e) { throw handleApiError(e, 'gợi ý từ khóa'); }
+    } catch (e) { handleApiError(e, 'gợi ý từ khóa'); return []; }
 };
 
 export const generateVisualPrompt = async (sceneDescription: string, provider: AiProvider, model: string): Promise<VisualPrompt[]> => {
