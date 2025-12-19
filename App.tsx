@@ -850,6 +850,7 @@ const App: React.FC = () => {
         </div>
         <div className="lg:col-span-6">
           <OutputDisplay
+            title={title}
             script={generatedScript} isLoading={isLoading} error={error}
             onStartSequentialGenerate={handleStartSequentialGenerate} 
             onStopSequentialGenerate={handleStopSequentialGenerate}

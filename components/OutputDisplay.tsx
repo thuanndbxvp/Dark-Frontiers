@@ -17,6 +17,7 @@ import { Tooltip } from './Tooltip';
 declare const XLSX: any;
 
 interface OutputDisplayProps {
+  title: string;
   script: string;
   isLoading: boolean;
   error: string | null;
@@ -111,7 +112,7 @@ const cleanTtsText = (text: string): string => {
 };
 
 export const OutputDisplay: React.FC<OutputDisplayProps> = ({ 
-    script, isLoading, error, 
+    title, script, isLoading, error, 
     onStartSequentialGenerate,
     onStopSequentialGenerate,
     isGeneratingSequentially, onGenerateNextPart, currentPart, totalParts,
@@ -151,7 +152,8 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = 'youtube-script.txt';
+        const sanitizedTitle = title.replace(/[/\\?%*:|"<>]/g, '-').trim();
+        link.download = `Script_${sanitizedTitle || 'Untitled'}.txt`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -191,7 +193,8 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
 
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, 'Kịch bản');
-        XLSX.writeFile(workbook, 'youtube-script.xlsx');
+        const sanitizedTitle = title.replace(/[/\\?%*:|"<>]/g, '-').trim();
+        XLSX.writeFile(workbook, `Script_${sanitizedTitle || 'Untitled'}.xlsx`);
     };
 
     const handleImportClick = () => {
@@ -209,7 +212,7 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
     const isOutline = script.includes("### Dàn Ý Chi Tiết");
     const showActionControls = !!script;
 
-    const getTitle = () => {
+    const getDisplayTitle = () => {
         if (isGeneratingSequentially) {
             return `Tiến trình: ${currentPart}/${totalParts} phần`;
         }
@@ -317,7 +320,7 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
         />
         <div className="flex justify-between items-center p-4 border-b border-border flex-wrap gap-2 sticky top-[81px] bg-secondary/95 backdrop-blur-md z-10">
             <h2 className="text-lg font-semibold text-text-primary flex items-center gap-2">
-                <span>{getTitle()}</span>
+                <span>{getDisplayTitle()}</span>
                 {isLoading && (
                     <svg className="animate-spin h-5 w-5 text-accent" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
