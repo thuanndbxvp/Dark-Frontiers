@@ -101,24 +101,21 @@ TRIẾT LÝ NỘI DUNG: "Chúng ta bán Nỗi sợ về những điều chưa bi
 
 1. ĐỊNH HƯỚNG NỘI DUNG:
 - Niche: Sự kiện/Địa điểm có thật + Cryptids (Sinh vật huyền bí) = Ác mộng.
-- Bối cảnh: 1800s - 1950s (Thời kỳ đèn dầu, súng trường, thám hiểm hoang sơ, KHÔNG có công nghệ cứu sinh hiện đại).
+- Bối cảnh: 1800s - 1950s (Thời kỳ đèn dầu, súng trường, thám hiểm hoang sơ, KHÔNG có công nghệ hiện đại như GPS, điện thoại vệ tinh).
 - Pillar: Thám hiểm mất tích, Kinh dị công nghiệp (hầm mỏ/hải đăng), Chiến tranh & Quái vật.
 
 2. PHONG CÁCH & GIỌNG KỂ (AUDIO CINEMA):
-- Quy tắc "Show, Don't Tell": Tuyệt đối không viết "Tôi sợ". Hãy viết "Tay tôi run đến mức không thể châm được diêm" hoặc "Tiếng tim đập lấn át cả tiếng gió rít ngoài hang".
+- Quy tắc "Show, Don't Tell": Tuyệt đối không viết "Tôi rất sợ". Hãy viết "Lớp sương giá đóng thành vảy trên râu tôi, và tôi nhận ra mình không còn cảm nhận được hơi ấm từ họng súng vừa khai hỏa".
 - Tông giọng: Ominous (Điềm báo), Gritty (Gai góc), Melancholic (U sầu).
 
-3. CẤU TRÚC NARRATIVE (5 GIAI ĐOẠN):
-- THE HOOK: Tóm tắt kết cục bi thảm. POV: Ngôi thứ 3 (Lạnh lùng, khách quan).
-- THE SLOW BURN: Dấu hiệu nhỏ rùng rợn. POV: Chuyển sang ngôi thứ 1 (Người sống sót).
-- THE SIEGE: Vòng vây khép lại, tấn công tâm lý. POV: Ngôi thứ 1.
-- THE CLIMAX: Đối đầu trực diện, trốn thoát gang tấc. POV: Ngôi thứ 1.
-- THE SCAR: Kết thúc ám ảnh, vết sẹo tâm lý vĩnh viễn. POV: Ngôi thứ 1.
+3. CẤU TRÚC NARRATIVE & NGÔI KỂ:
+- Giai đoạn 1 (THE HOOK): Tóm tắt kết cục bi thảm. POV: Ngôi thứ 3 (Lạnh lùng, đưa ra cảnh báo).
+- Giai đoạn 2-5 (SLOW BURN -> SIEGE -> CLIMAX -> SCAR): Chuyển hẳn sang Ngôi thứ 1 (POV Nhân vật "Tôi" - Người sống sót duy nhất). Giọng điệu mệt mỏi, ám ảnh, hối tiếc.
 
-4. QUY TẮC KỊCH BẢN SẠCH (TTS-READY):
-- KHÔNG bao giờ thêm các chỉ dẫn âm thanh [SFX], ánh sáng, [Nhạc nổi lên], hoặc các chú thích đạo diễn.
-- KHÔNG thêm nhãn "Lời thoại:", "Dẫn chuyện:", "Cảnh 1:".
-- CHỈ trả về văn bản kể chuyện thuần túy, sạch sẽ, sẵn sàng để dán vào công cụ TTS (ElevenLabs).
+4. QUY TẮC KỊCH BẢN SẠCH (BẮT BUỘC):
+- GIỮ LẠI các tiêu đề phần (VD: ## THE HOOK, ## THE SLOW BURN...).
+- LOẠI BỎ hoàn toàn mọi chỉ dẫn kỹ thuật: [SFX], [Audio], [Visual], [Music], "Cảnh:", "Lời thoại:", "Dẫn chuyện:".
+- CHỈ trả về văn bản nội dung kể chuyện trơn tru, sẵn sàng cho Text-to-speech.
 `;
 
 export const generateScript = async (params: GenerationParams, provider: AiProvider, model: string): Promise<string> => {
@@ -130,16 +127,16 @@ export const generateScript = async (params: GenerationParams, provider: AiProvi
             ${DARK_FRONTIERS_DNA}
             HÃY VIẾT KỊCH BẢN SẠCH CHO VIDEO: "${title}"
             NGÔN NGỮ: ${targetAudience}
-            ĐỘ ĐÀI: ${wordCount} từ.
+            ĐỘ ĐÀI MỤC TIÊU: ${wordCount} từ.
             ${outlineContent ? `DÀN Ý GỢI Ý: ${outlineContent}` : ''}
 
-            YÊU CẦU BẮT BUỘC:
-            - Trình bày theo tiêu đề Markdown ## [Tên giai đoạn].
-            - Phần nội dung là VĂN BẢN SẠCH 100%, sẵn sàng cho TTS.
+            YÊU CẦU: 
+            - Phân chia theo 5 giai đoạn cấu trúc Dark Frontiers bằng tiêu đề ##.
+            - Nội dung kịch bản sạch 100%, không rác văn bản kỹ thuật.
         `;
     } else {
         prompt = `Viết kịch bản YouTube về "${title}". Ngôn ngữ: ${targetAudience}. Độ dài: ${wordCount} từ. 
-        YÊU CẦU KỊCH BẢN SẠCH: Loại bỏ hoàn toàn các chỉ dẫn kỹ thuật, chỉ để lại lời kể chuyện/lời thoại dẫn dắt.`;
+        KỊCH BẢN SẠCH: Loại bỏ chỉ dẫn kỹ thuật, giữ tiêu đề phần.`;
     }
 
     try {
@@ -156,17 +153,13 @@ export const generateScriptOutline = async (params: GenerationParams, provider: 
     if (isDarkFrontiers) {
         prompt = `
             ${DARK_FRONTIERS_DNA}
-            Hãy tạo Dàn ý CHI TIẾT cho kịch bản dài: "${title}".
-            Sử dụng cấu trúc 5 giai đoạn: The Hook, The Slow Burn, The Siege, The Climax, The Scar.
+            Tạo dàn ý chi tiết 5 phần (Hook, Slow Burn, Siege, Climax, Scar) cho "${title}".
             Ngôn ngữ tiêu đề: Tiếng Việt.
-            Ngôn ngữ tóm tắt cốt truyện: ${targetAudience}.
-            
-            ĐỊNH DẠNG:
-            ## [Tên giai đoạn]
-            **Cốt truyện chi tiết:** [Mô tả diễn biến logic]
+            Ngôn ngữ tóm tắt: ${targetAudience}.
+            Độ dài dự kiến toàn bài: ${wordCount} từ.
         `;
     } else {
-        prompt = `Tạo dàn ý YouTube "${title}". Ngôn ngữ: Tiếng Việt. Chia phần ## [Tên phần].`;
+        prompt = `Tạo dàn ý YouTube "${title}". Ngôn ngữ: Tiếng Việt. Chia phần ##.`;
     }
 
     try {
@@ -185,21 +178,20 @@ export const generateScriptPart = async (fullOutline: string, previousPartsScrip
     if (isDarkFrontiers) {
         prompt = `
             ${DARK_FRONTIERS_DNA}
-            VIẾT TIẾP MỘT PHẦN CỦA KỊCH BẢN: "${title}"
+            VIẾT TIẾP PHẦN KỊCH BẢN: "${title}"
             
-            DÀN Ý TỔNG THỂ: ${fullOutline}
+            DÀN Ý TỔNG: ${fullOutline}
             PHẦN ĐANG VIẾT: ${currentPartOutline}
-            NỘI DUNG CÁC PHẦN TRƯỚC: ${previousPartsScript.slice(-2000)}
+            NỘI DUNG ĐÃ VIẾT TRƯỚC ĐÓ: ${previousPartsScript.slice(-2000)}
 
-            YÊU CẦU ĐẶC BIỆT:
-            - Viết khoảng ${estPartWords} từ.
-            - NGÔN NGỮ: ${targetAudience}.
-            - PHẢI LÀ KỊCH BẢN SẠCH: Tuyệt đối không rác kỹ thuật (SFX, Visuals).
-            - Nếu là "Hook", dùng ngôi thứ 3 lạnh lùng. Sau đó dùng ngôi thứ 1 ám ảnh.
-            - Tập trung vào cảm giác vật lý rùng rợn của bối cảnh lịch sử 1800s-1950s.
+            YÊU CẦU:
+            - Độ dài: Khoảng ${estPartWords} từ.
+            - KỊCH BẢN SẠCH: Tuyệt đối không thêm rác [SFX] hay chỉ dẫn hình ảnh.
+            - Tuân thủ ngôi kể (Ngôi 3 cho Hook, Ngôi 1 cho phần còn lại).
+            - Ngôn ngữ: ${targetAudience}.
         `;
     } else {
-        prompt = `Viết tiếp phần này cho kịch bản "${title}". Dàn ý: ${currentPartOutline}. Ngôn ngữ: ${targetAudience}. KỊCH BẢN SẠCH TTS.`;
+        prompt = `Viết tiếp phần này cho kịch bản "${title}". Dàn ý: ${currentPartOutline}. Ngôn ngữ: ${targetAudience}. KỊCH BẢN SẠCH.`;
     }
 
     try {
@@ -210,8 +202,7 @@ export const generateScriptPart = async (fullOutline: string, previousPartsScrip
 };
 
 export const generateTopicSuggestions = async (title: string, provider: AiProvider, model: string): Promise<TopicSuggestionItem[]> => {
-    const prompt = `Dựa trên "${title}", gợi ý 5 ý tưởng video YouTube kinh dị dã sử (Historical Horror). 
-    Trả về JSON array: { title, vietnameseTitle, outline }.`;
+    const prompt = `Dựa trên "${title}", gợi ý 5 ý tưởng video YouTube kinh dị dã sử (Historical Horror). Trả về JSON: { title, vietnameseTitle, outline }.`;
     try {
         const response = await callApi(prompt, provider, model);
         const cleaned = response.replace(/```json|```/g, '').trim();
@@ -223,7 +214,7 @@ export const generateTopicSuggestions = async (title: string, provider: AiProvid
 
 export const reviseScript = async (script: string, revisionPrompt: string, params: any, provider: AiProvider, model: string): Promise<string> => {
     const prompt = `Chỉnh sửa kịch bản sau: "${revisionPrompt}". 
-    Đảm bảo giữ phong cách KỊCH BẢN SẠCH (không SFX/Visuals) và DNA Dark Frontiers.
+    Đảm bảo KỊCH BẢN SẠCH (không SFX/Visuals) và DNA Dark Frontiers.
     Kịch bản:
     ${script}`;
     try {
@@ -234,7 +225,7 @@ export const reviseScript = async (script: string, revisionPrompt: string, param
 };
 
 export const extractDialogue = async (script: string, provider: AiProvider, model: string): Promise<Record<string, string>> => {
-    const prompt = `Tách lời thoại/dẫn chuyện sạch từ kịch bản này. Trả về JSON: { "Phần": "Văn bản kể chuyện" }.
+    const prompt = `Tách lời kể chuyện sạch từ kịch bản này. Trả về JSON: { "Phần": "Văn bản kể chuyện" }.
     Kịch bản:
     ${script}`;
     try {
@@ -257,9 +248,7 @@ export const generateKeywordSuggestions = async (title: string, provider: AiProv
 };
 
 export const generateVisualPrompt = async (sceneDescription: string, provider: AiProvider, model: string): Promise<VisualPrompt> => {
-    const prompt = `Tạo prompt hình ảnh cho cảnh: "${sceneDescription}". 
-    Style: 19th-20th Century Historical Horror, Sepia/Desaturated, Ominous, High Contrast.
-    Trả về JSON: { "english": "...", "vietnamese": "..." }`;
+    const prompt = `Tạo prompt hình ảnh cho cảnh: "${sceneDescription}". Style: Historical Horror. JSON: { "english": "...", "vietnamese": "..." }`;
     try {
         const response = await callApi(prompt, provider, model);
         const cleaned = response.replace(/```json|```/g, '').trim();
@@ -281,7 +270,7 @@ export const generateAllVisualPrompts = async (script: string, provider: AiProvi
 };
 
 export const summarizeScriptForScenes = async (script: string, config: SummarizeConfig, provider: AiProvider, model: string): Promise<ScriptPartSummary[]> => {
-    const prompt = `Tóm tắt kịch bản thành các cảnh quay chi tiết. Trả về JSON theo cấu trúc ScriptPartSummary.`;
+    const prompt = `Tóm tắt kịch bản thành các cảnh quay chi tiết. Trả về JSON ScriptPartSummary.`;
     try {
         const response = await callApi(prompt, provider, model);
         const cleaned = response.replace(/```json|```/g, '').trim();
@@ -340,7 +329,7 @@ export const generateElevenlabsTts = async (text: string, voiceId: string): Prom
 };
 
 export const scoreScript = async (script: string, provider: AiProvider, model: string): Promise<string> => {
-    const prompt = `Chấm điểm (1-100) và nhận xét tính "Kinh dị dã sử" và độ hấp dẫn của kịch bản này.`;
+    const prompt = `Chấm điểm (1-100) dựa trên DNA Dark Frontiers và nhận xét kịch bản này.`;
     try {
         return await callApi(prompt, provider, model);
     } catch (e) {

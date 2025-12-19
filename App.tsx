@@ -51,12 +51,12 @@ const App: React.FC = () => {
     includeIntro: false,
     includeOutro: false,
   });
-  const [wordCount, setWordCount] = useState<string>(isDarkFrontiers ? '5000' : '800');
+  const [wordCount, setWordCount] = useState<string>('5000');
   const [scriptParts, setScriptParts] = useState<string>('Auto');
   const [scriptType, setScriptType] = useState<ScriptType>('Video');
   const [numberOfSpeakers, setNumberOfSpeakers] = useState<NumberOfSpeakers>('Auto');
   const [lengthType, setLengthType] = useState<'words' | 'duration'>('words');
-  const [videoDuration, setVideoDuration] = useState<string>(isDarkFrontiers ? '30' : '5');
+  const [videoDuration, setVideoDuration] = useState<string>('30');
 
   const [generatedScript, setGeneratedScript] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
