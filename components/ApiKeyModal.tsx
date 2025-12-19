@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { TrashIcon } from './icons/TrashIcon';
 import type { AiProvider } from '../types';
@@ -66,30 +67,39 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, curre
     }, [isOpen, currentApiKeys]);
 
     const handleAddKey = async (provider: AiProvider) => {
-        const keyToAdd = newKeyInputs[provider].trim();
-        if (!keyToAdd) return;
+        const rawInput = newKeyInputs[provider].trim();
+        if (!rawInput) return;
 
-        if (localApiKeys[provider].includes(keyToAdd)) {
+        // Split by new lines, filter out empty lines and existing keys
+        const keysToProcess = rawInput
+            .split('\n')
+            .map(k => k.trim())
+            .filter(k => k && !localApiKeys[provider].includes(k));
+
+        if (keysToProcess.length === 0) {
             setValidationStatus(prev => ({
                 ...prev,
-                [provider]: { state: 'invalid', message: "Key này đã tồn tại." }
+                [provider]: { state: 'invalid', message: "Tất cả các key này đều đã tồn tại hoặc không hợp lệ." }
             }));
             return;
         }
 
         setValidationStatus(prev => ({ ...prev, [provider]: { state: 'checking', message: null } }));
+        
         try {
-            await validateApiKey(keyToAdd, provider);
-            setValidationStatus(prev => ({ ...prev, [provider]: { state: 'valid', message: "Key hợp lệ!" } }));
-
+            // We validate them sequentially or at least verify the first one as a sample
+            // For batching, we will add all of them but we'll try to validate the first new one to ensure the input isn't garbage
+            await validateApiKey(keysToProcess[0], provider);
+            
             setLocalApiKeys(prev => {
-                const updatedKeys = [...prev[provider], keyToAdd];
-                // If this is the first key added, make it active
-                if(updatedKeys.length === 1) {
-                    return { ...prev, [provider]: updatedKeys };
-                }
+                const updatedKeys = [...prev[provider], ...keysToProcess];
                 return { ...prev, [provider]: updatedKeys };
             });
+
+            setValidationStatus(prev => ({ 
+                ...prev, 
+                [provider]: { state: 'valid', message: `Đã thêm ${keysToProcess.length} key thành công!` } 
+            }));
 
             setNewKeyInputs(prev => ({ ...prev, [provider]: '' }));
 
@@ -98,7 +108,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, curre
         } catch (error) {
             setValidationStatus(prev => ({
                 ...prev,
-                [provider]: { state: 'invalid', message: error instanceof Error ? error.message : "Lỗi không xác định." }
+                [provider]: { state: 'invalid', message: error instanceof Error ? error.message : "Lỗi xác thực key đầu tiên." }
             }));
         }
     };
@@ -148,28 +158,26 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, curre
                     {icon}
                     <h3 className="font-semibold text-text-primary text-lg">{title}</h3>
                 </div>
-                <p className="text-xs text-text-secondary/80 mb-2">Lấy key từ {link}.</p>
+                <p className="text-xs text-text-secondary/80 mb-2">Lấy key từ {link}. Nhập mỗi key trên một dòng.</p>
                 
-                <div className="flex items-start gap-2">
-                    <div className="relative flex-grow">
-                        <KeyIcon className="w-4 h-4 absolute left-2.5 top-2.5 text-text-secondary"/>
-                         <input
-                            type="text"
-                            className="w-full bg-secondary border border-border rounded-md p-2 pl-8 text-text-primary focus:ring-2 focus:ring-accent focus:border-accent transition font-mono text-sm"
+                <div className="flex flex-col gap-2">
+                    <div className="relative">
+                        <KeyIcon className="w-4 h-4 absolute left-2.5 top-3 text-text-secondary"/>
+                         <textarea
+                            className="w-full bg-secondary border border-border rounded-md p-2 pl-8 text-text-primary focus:ring-2 focus:ring-accent focus:border-accent transition font-mono text-xs h-24"
                             value={newKeyInputs[provider]}
                             onChange={(e) => setNewKeyInputs(prev => ({ ...prev, [provider]: e.target.value }))}
-                            placeholder="Dán API key mới..."
-                            onKeyDown={(e) => e.key === 'Enter' && handleAddKey(provider)}
+                            placeholder={"Dán API keys tại đây...\nKey_1\nKey_2"}
                         />
                     </div>
                     <button
                         onClick={() => handleAddKey(provider)}
-                        disabled={status.state === 'checking'}
-                        className="flex-shrink-0 bg-accent hover:brightness-110 text-white font-bold py-2 px-3 rounded-md transition disabled:opacity-50"
+                        disabled={status.state === 'checking' || !newKeyInputs[provider].trim()}
+                        className="w-full bg-accent hover:brightness-110 text-white font-bold py-2 px-3 rounded-md transition disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                         {status.state === 'checking' ? (
-                            <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                        ) : 'Thêm'}
+                            <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        ) : 'Thêm danh sách'}
                     </button>
                 </div>
                 {status.message && (
@@ -185,12 +193,12 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, curre
                     ) : (
                         displayedKeys.map((key, index) => (
                             <div key={`${provider}-${index}`} className="bg-secondary p-2 rounded-md flex justify-between items-center text-sm transition-all group">
-                                <div className="flex items-center gap-2">
-                                     <KeyIcon className="w-4 h-4 text-text-secondary"/>
-                                    <span className="font-mono text-text-secondary flex-shrink-0">{`...${key.slice(-6)}`}</span>
-                                    {index === 0 && <span className="text-xs font-bold text-accent bg-primary px-2 py-0.5 rounded-full">ACTIVE</span>}
+                                <div className="flex items-center gap-2 overflow-hidden">
+                                     <KeyIcon className="w-4 h-4 text-text-secondary flex-shrink-0"/>
+                                    <span className="font-mono text-text-secondary truncate">{`...${key.slice(-8)}`}</span>
+                                    {index === 0 && <span className="text-[10px] font-bold text-accent bg-primary px-1.5 py-0.5 rounded-full flex-shrink-0">ACTIVE</span>}
                                 </div>
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-1 flex-shrink-0">
                                     {index > 0 && (
                                         <button 
                                             onClick={() => handleActivateKey(provider, index)}
