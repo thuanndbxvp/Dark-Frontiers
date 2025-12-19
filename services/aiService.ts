@@ -225,8 +225,14 @@ export const reviseScript = async (script: string, revisionPrompt: string, param
 };
 
 export const extractDialogue = async (script: string, provider: AiProvider, model: string): Promise<Record<string, string>> => {
-    const prompt = `Tách lời kể chuyện sạch từ kịch bản này. Trả về JSON: { "Phần": "Văn bản kể chuyện" }.
-    Kịch bản:
+    const prompt = `Bạn là chuyên gia bóc tách kịch bản. Hãy tách toàn bộ lời dẫn chuyện/lời thoại SẠCH từ kịch bản sau.
+    YÊU CẦU:
+    - Loại bỏ mọi ký hiệu Markdown (##, #, **).
+    - Loại bỏ mọi nhãn kỹ thuật (SFX, Music, Visuals).
+    - Trả về JSON duy nhất: { "Tên phần": "Nội dung lời thoại nguyên bản" }.
+    - Nếu kịch bản đã sạch, chỉ cần chia nó theo các đoạn logic.
+
+    KỊCH BẢN:
     ${script}`;
     try {
         const response = await callApi(prompt, provider, model);

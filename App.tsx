@@ -36,18 +36,18 @@ const App: React.FC = () => {
   const [isDarkFrontiers, setIsDarkFrontiers] = useState<boolean>(true);
   const [title, setTitle] = useState<string>('');
   const [outlineContent, setOutlineContent] = useState<string>('');
-  const [targetAudience, setTargetAudience] = useState<string>('English'); // Default to English for DF
+  const [targetAudience, setTargetAudience] = useState<string>('English');
   const [styleOptions, setStyleOptions] = useState<StyleOptions>({
-    expression: 'Ominous', // Default for DF
-    style: 'Cinematic Horror', // Default for DF
+    expression: 'Ominous',
+    style: 'Cinematic Horror',
   });
-  const [themeColor, setThemeColor] = useState<string>('#f59e0b'); // Default Amber for DF
+  const [themeColor, setThemeColor] = useState<string>('#f59e0b');
   
   const [keywords, setKeywords] = useState<string>('');
   const [formattingOptions, setFormattingOptions] = useState<FormattingOptions>({
     headings: true,
-    bullets: false, // Default false for DF
-    bold: false, // Default false for DF
+    bullets: false,
+    bold: false,
     includeIntro: false,
     includeOutro: false,
   });
@@ -94,6 +94,7 @@ const App: React.FC = () => {
   const [currentPartIndex, setCurrentPartIndex] = useState<number>(0);
   const [fullOutlineText, setFullOutlineText] = useState<string>('');
   const [autoContinue, setAutoContinue] = useState<boolean>(true);
+  const isStoppingRef = useRef<boolean>(false);
 
   const [isDialogueModalOpen, setIsDialogueModalOpen] = useState<boolean>(false);
   const [extractedDialogue, setExtractedDialogue] = useState<Record<string, string> | null>(null);
@@ -212,6 +213,7 @@ const App: React.FC = () => {
     setOutlineParts([]);
     setCurrentPartIndex(0);
     setFullOutlineText('');
+    isStoppingRef.current = false;
   };
 
   const handleGenerateScript = useCallback(async () => {
@@ -261,7 +263,10 @@ const App: React.FC = () => {
 
   const handleGenerateNextPart = useCallback(async (indexToGenerate?: number) => {
     const targetIndex = indexToGenerate !== undefined ? indexToGenerate : currentPartIndex;
-    if (!isGeneratingSequentially || targetIndex >= outlineParts.length) return;
+    if (!isGeneratingSequentially || targetIndex >= outlineParts.length || isStoppingRef.current) {
+        if (isStoppingRef.current) setIsGeneratingSequentially(false);
+        return;
+    }
 
     setIsLoading(true);
     const currentOutlinePart = outlineParts[targetIndex];
@@ -293,17 +298,21 @@ const App: React.FC = () => {
             aiProvider, 
             selectedModel
         );
+        if (isStoppingRef.current) return;
+
         setGeneratedScript(prev => prev + partContent + '\n\n---\n\n');
         const nextIndex = targetIndex + 1;
         setCurrentPartIndex(nextIndex);
         
         // Auto-continue logic
-        if (autoContinue && nextIndex < outlineParts.length) {
-            // Tiny delay to allow UI to breathe
+        if (autoContinue && nextIndex < outlineParts.length && !isStoppingRef.current) {
             setTimeout(() => handleGenerateNextPart(nextIndex), 100);
+        } else if (nextIndex >= outlineParts.length) {
+            setIsGeneratingSequentially(false);
         }
     } catch (err) {
         setError(err instanceof Error ? err.message : 'Lỗi khi tạo phần tiếp theo.');
+        setIsGeneratingSequentially(false);
     } finally {
         setIsLoading(false);
     }
@@ -316,18 +325,23 @@ const App: React.FC = () => {
         setError('Không tìm thấy cấu trúc phần trong dàn ý. Vui lòng thử lại.');
         return;
     }
+    isStoppingRef.current = false;
     setOutlineParts(parts);
     setCurrentPartIndex(0);
     setIsGeneratingSequentially(true);
-    
-    // Immediately start part 0
-    // We update state first then call next tick
     setGeneratedScript('--- BẮT ĐẦU TẠO KỊCH BẢN CHI TIẾT ---\n\n');
   }, [generatedScript]);
 
+  const handleStopSequentialGenerate = useCallback(() => {
+    isStoppingRef.current = true;
+    setIsLoading(false);
+    setIsGeneratingSequentially(false);
+    setNotification("Đã yêu cầu dừng tạo kịch bản.");
+  }, []);
+
   // Effect to trigger first part when isGeneratingSequentially turns true
   useEffect(() => {
-      if (isGeneratingSequentially && currentPartIndex === 0 && outlineParts.length > 0 && !isLoading && generatedScript.includes('BẮT ĐẦU')) {
+      if (isGeneratingSequentially && currentPartIndex === 0 && outlineParts.length > 0 && !isLoading && generatedScript.includes('BẮT ĐẦU') && !isStoppingRef.current) {
           handleGenerateNextPart(0);
       }
   }, [isGeneratingSequentially, currentPartIndex, outlineParts.length, isLoading, generatedScript, handleGenerateNextPart]);
@@ -358,8 +372,27 @@ const App: React.FC = () => {
     if (!generatedScript) return;
     setIsExtracting(true);
     setIsDialogueModalOpen(true);
+    setExtractionError(null);
+    
     try {
-        const dialogue = await extractDialogue(generatedScript, aiProvider, selectedModel);
+        let dialogue: Record<string, string> = {};
+
+        // OPTIMIZATION: If script has clear Markdown headers (standard for DF clean scripts), parse locally
+        if (generatedScript.includes('## ')) {
+            const sections = generatedScript.split(/(?=^## .*?$)/m).filter(s => s.trim() !== '' && !s.includes('---'));
+            sections.forEach(s => {
+                const lines = s.split('\n');
+                const title = lines[0].replace(/^##\s+/, '').trim() || 'Phần không tên';
+                const content = lines.slice(1).join('\n').trim();
+                if (content) dialogue[title] = content;
+            });
+        }
+
+        // FALLBACK: If local parsing yielded nothing, or it's not Markdown, use AI
+        if (Object.keys(dialogue).length === 0) {
+            dialogue = await extractDialogue(generatedScript, aiProvider, selectedModel);
+        }
+        
         setExtractedDialogue(dialogue);
         
         // Calculate stats
@@ -627,6 +660,7 @@ const App: React.FC = () => {
           <OutputDisplay
             script={generatedScript} isLoading={isLoading} error={error}
             onStartSequentialGenerate={handleStartSequentialGenerate} 
+            onStopSequentialGenerate={handleStopSequentialGenerate}
             isGeneratingSequentially={isGeneratingSequentially} 
             onGenerateNextPart={() => handleGenerateNextPart()} 
             currentPart={currentPartIndex} 

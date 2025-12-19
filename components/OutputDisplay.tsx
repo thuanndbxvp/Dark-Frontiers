@@ -11,12 +11,14 @@ import { FilmIcon } from './icons/FilmIcon';
 import { CheckIcon } from './icons/CheckIcon';
 import type { ScriptType, VisualPrompt } from '../types';
 import { UploadIcon } from './icons/UploadIcon';
+import { Tooltip } from './Tooltip';
 
 interface OutputDisplayProps {
   script: string;
   isLoading: boolean;
   error: string | null;
   onStartSequentialGenerate: () => void;
+  onStopSequentialGenerate: () => void;
   isGeneratingSequentially: boolean;
   onGenerateNextPart: () => void;
   currentPart: number;
@@ -96,6 +98,7 @@ const parseMarkdown = (text: string) => {
 export const OutputDisplay: React.FC<OutputDisplayProps> = ({ 
     script, isLoading, error, 
     onStartSequentialGenerate,
+    onStopSequentialGenerate,
     isGeneratingSequentially, onGenerateNextPart, currentPart, totalParts,
     revisionCount,
     onGenerateVisualPrompt,
@@ -244,17 +247,46 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
                 )}
             </h2>
             <div className="flex items-center gap-3 flex-wrap">
+                {script && isOutline && (
+                    <div className="flex items-center gap-2 bg-primary/40 px-3 py-1.5 rounded-md border border-border mr-1">
+                        <input 
+                            type="checkbox" 
+                            id="header-autoContinue" 
+                            checked={autoContinue} 
+                            onChange={(e) => setAutoContinue?.(e.target.checked)} 
+                            className="h-4 w-4 rounded border-border text-accent focus:ring-accent bg-secondary"
+                        />
+                        <label htmlFor="header-autoContinue" className="text-xs font-medium text-text-secondary cursor-pointer whitespace-nowrap">Auto-next</label>
+                    </div>
+                )}
+
                 {script && !isLoading && isOutline && !isGeneratingSequentially && (
                     <button onClick={onStartSequentialGenerate} className="flex items-center space-x-2 bg-accent hover:brightness-110 text-white px-3 py-1.5 rounded-md text-sm font-semibold transition shadow-md shadow-accent/20">
                         <BoltIcon className="w-4 h-4" />
                         <span>Tạo kịch bản đầy đủ</span>
                     </button>
                 )}
-                <button onClick={handleImportClick} className="flex items-center space-x-2 bg-secondary hover:bg-primary/50 text-text-primary px-3 py-1.5 rounded-md text-sm transition border border-border">
-                    <UploadIcon className="w-4 h-4" />
-                    <span>Import</span>
-                </button>
-                {showActionControls && (
+
+                {isGeneratingSequentially && (
+                    <button 
+                        onClick={onStopSequentialGenerate} 
+                        className="flex items-center space-x-2 bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-md text-sm font-semibold transition shadow-md shadow-red-900/20"
+                    >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <rect x="5" y="5" width="10" height="10" rx="1" />
+                        </svg>
+                        <span>Dừng tạo</span>
+                    </button>
+                )}
+
+                {!isGeneratingSequentially && (
+                    <button onClick={handleImportClick} className="flex items-center space-x-2 bg-secondary hover:bg-primary/50 text-text-primary px-3 py-1.5 rounded-md text-sm transition border border-border">
+                        <UploadIcon className="w-4 h-4" />
+                        <span>Import</span>
+                    </button>
+                )}
+
+                {showActionControls && !isGeneratingSequentially && (
                     <>
                         <button onClick={handleExportTxt} className="flex items-center space-x-2 bg-secondary hover:bg-primary/50 text-text-primary px-3 py-1.5 rounded-md text-sm transition disabled:opacity-50 disabled:cursor-not-allowed border border-border" disabled={isLoading}>
                             <DownloadIcon className="w-4 h-4" />
@@ -274,17 +306,7 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
             </div>
         </div>
         {isGeneratingSequentially && !isLoading && (
-            <div className="p-4 border-t border-border bg-primary/30 flex justify-between items-center gap-4">
-                <div className="flex items-center gap-2">
-                    <input 
-                        type="checkbox" 
-                        id="autoContinue" 
-                        checked={autoContinue} 
-                        onChange={(e) => setAutoContinue?.(e.target.checked)} 
-                        className="h-4 w-4 rounded border-border text-accent focus:ring-accent bg-secondary"
-                    />
-                    <label htmlFor="autoContinue" className="text-sm font-medium text-text-primary cursor-pointer">Tự động tạo tiếp</label>
-                </div>
+            <div className="p-4 border-t border-border bg-primary/30 flex justify-end items-center gap-4">
                 {currentPart < totalParts && (
                     <button onClick={onGenerateNextPart} className="flex-1 max-w-xs flex items-center justify-center bg-accent hover:brightness-110 text-white font-bold py-2.5 px-4 rounded-lg transition shadow-md shadow-accent/20">
                         Tiếp tục phần {currentPart + 1}/{totalParts}
