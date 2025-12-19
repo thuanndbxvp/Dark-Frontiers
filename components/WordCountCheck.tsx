@@ -1,3 +1,4 @@
+
 import React from 'react';
 import type { WordCountStats } from '../types';
 import { MicrophoneIcon } from './icons/MicrophoneIcon';
@@ -6,10 +7,11 @@ interface WordCountCheckProps {
   stats: WordCountStats | null;
   targetWordCount: string;
   onExtractAndCount: () => void;
+  onOpenDialogueModal: () => void;
   isLoading: boolean;
 }
 
-export const WordCountCheck: React.FC<WordCountCheckProps> = ({ stats, targetWordCount, onExtractAndCount, isLoading }) => {
+export const WordCountCheck: React.FC<WordCountCheckProps> = ({ stats, targetWordCount, onExtractAndCount, onOpenDialogueModal, isLoading }) => {
     if (!stats) {
         return (
             <div className="bg-secondary p-4 rounded-lg border border-border space-y-3">
@@ -90,7 +92,7 @@ export const WordCountCheck: React.FC<WordCountCheckProps> = ({ stats, targetWor
                 </div>
             </div>
             <button
-                onClick={onExtractAndCount}
+                onClick={onOpenDialogueModal}
                 disabled={isLoading}
                 className="w-full mt-4 flex items-center justify-center bg-primary hover:bg-primary/70 disabled:bg-primary/40 disabled:cursor-not-allowed text-text-secondary font-bold py-2 px-4 rounded-lg transition border border-border"
             >

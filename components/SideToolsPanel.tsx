@@ -25,6 +25,7 @@ interface SideToolsPanelProps {
   onSaveToLibrary: () => void;
   hasSavedToLibrary: boolean;
   onExtractAndCount: () => void;
+  onOpenDialogueModal: () => void;
   wordCountStats: WordCountStats | null;
   isExtracting: boolean;
   onOpenTtsModal: () => void;
@@ -49,6 +50,7 @@ export const SideToolsPanel: React.FC<SideToolsPanelProps> = ({
     onSaveToLibrary,
     hasSavedToLibrary,
     onExtractAndCount,
+    onOpenDialogueModal,
     wordCountStats,
     isExtracting,
     onOpenTtsModal,
@@ -132,6 +134,7 @@ export const SideToolsPanel: React.FC<SideToolsPanelProps> = ({
                         stats={wordCountStats}
                         targetWordCount={targetWordCount}
                         onExtractAndCount={onExtractAndCount}
+                        onOpenDialogueModal={onOpenDialogueModal}
                         isLoading={isExtracting}
                     />
                     <ScriptTools 

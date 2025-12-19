@@ -147,6 +147,11 @@ const App: React.FC = () => {
   const [wordCountStats, setWordCountStats] = useState<WordCountStats | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
 
+  // NEW: Logic to calculate the effective target word count based on user selection in "Mục 8"
+  const effectiveTargetWordCount = lengthType === 'duration'
+    ? (Math.max(0, parseInt(videoDuration || '0', 10)) * 150).toString()
+    : wordCount;
+
   useEffect(() => {
     try {
       const savedLibrary = localStorage.getItem('yt-script-library');
@@ -803,10 +808,14 @@ const App: React.FC = () => {
         </div>
          <div className="lg:col-span-3">
             <SideToolsPanel
-                script={generatedScript} targetWordCount={wordCount} revisionPrompt={revisionPrompt} setRevisionPrompt={setRevisionPrompt}
+                script={generatedScript} 
+                targetWordCount={effectiveTargetWordCount}
+                revisionPrompt={revisionPrompt} setRevisionPrompt={setRevisionPrompt}
                 onRevise={handleReviseScript} onSummarizeScript={() => setIsSummarizeModalOpen(true)} isLoading={isLoading} isSummarizing={isSummarizing} hasSummarizedScript={hasSummarizedScript}
                 onOpenLibrary={() => setIsLibraryOpen(true)} onSaveToLibrary={handleSaveToLibrary} hasSavedToLibrary={hasSavedToLibrary}
-                onExtractAndCount={handleExtractDialogue} wordCountStats={wordCountStats} isExtracting={isExtracting}
+                onExtractAndCount={handleExtractDialogue} 
+                onOpenDialogueModal={() => setIsDialogueModalOpen(true)}
+                wordCountStats={wordCountStats} isExtracting={isExtracting}
                 onOpenTtsModal={handleOpenTtsModal} onScoreScript={handleScoreScript} isScoring={isScoring}
                 onGenerateAllPrompts={handleGenerateAllSegmentPrompts}
                 onDownloadAllPrompts={handleDownloadAllPrompts}
