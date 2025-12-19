@@ -93,6 +93,7 @@ const App: React.FC = () => {
   const [outlineParts, setOutlineParts] = useState<string[]>([]);
   const [currentPartIndex, setCurrentPartIndex] = useState<number>(0);
   const [fullOutlineText, setFullOutlineText] = useState<string>('');
+  const [autoContinue, setAutoContinue] = useState<boolean>(true);
 
   const [isDialogueModalOpen, setIsDialogueModalOpen] = useState<boolean>(false);
   const [extractedDialogue, setExtractedDialogue] = useState<Record<string, string> | null>(null);
@@ -258,24 +259,12 @@ const App: React.FC = () => {
     }
   }, [title, outlineContent, targetAudience, styleOptions, keywords, formattingOptions, wordCount, scriptParts, scriptType, numberOfSpeakers, lengthType, videoDuration, aiProvider, selectedModel, isDarkFrontiers]);
 
-  const handleStartSequentialGenerate = useCallback(() => {
-    if (!generatedScript) return;
-    const parts = parseOutlineIntoSegments(generatedScript);
-    if (parts.length === 0) {
-        setError('Không tìm thấy cấu trúc phần trong dàn ý. Vui lòng thử lại.');
-        return;
-    }
-    setOutlineParts(parts);
-    setCurrentPartIndex(0);
-    setIsGeneratingSequentially(true);
-    setGeneratedScript('--- BẮT ĐẦU TẠO KỊCH BẢN CHI TIẾT ---\n\n');
-  }, [generatedScript]);
-
-  const handleGenerateNextPart = useCallback(async () => {
-    if (!isGeneratingSequentially || currentPartIndex >= outlineParts.length) return;
+  const handleGenerateNextPart = useCallback(async (indexToGenerate?: number) => {
+    const targetIndex = indexToGenerate !== undefined ? indexToGenerate : currentPartIndex;
+    if (!isGeneratingSequentially || targetIndex >= outlineParts.length) return;
 
     setIsLoading(true);
-    const currentOutlinePart = outlineParts[currentPartIndex];
+    const currentOutlinePart = outlineParts[targetIndex];
     
     const finalWordCount = lengthType === 'duration' && videoDuration
       ? (parseInt(videoDuration, 10) * 150).toString()
@@ -305,13 +294,43 @@ const App: React.FC = () => {
             selectedModel
         );
         setGeneratedScript(prev => prev + partContent + '\n\n---\n\n');
-        setCurrentPartIndex(prev => prev + 1);
+        const nextIndex = targetIndex + 1;
+        setCurrentPartIndex(nextIndex);
+        
+        // Auto-continue logic
+        if (autoContinue && nextIndex < outlineParts.length) {
+            // Tiny delay to allow UI to breathe
+            setTimeout(() => handleGenerateNextPart(nextIndex), 100);
+        }
     } catch (err) {
         setError(err instanceof Error ? err.message : 'Lỗi khi tạo phần tiếp theo.');
     } finally {
         setIsLoading(false);
     }
-  }, [isGeneratingSequentially, currentPartIndex, outlineParts, title, outlineContent, targetAudience, styleOptions, keywords, formattingOptions, wordCount, scriptParts, scriptType, numberOfSpeakers, lengthType, videoDuration, aiProvider, selectedModel, isDarkFrontiers, fullOutlineText, generatedScript]);
+  }, [isGeneratingSequentially, currentPartIndex, outlineParts, title, outlineContent, targetAudience, styleOptions, keywords, formattingOptions, wordCount, scriptParts, scriptType, numberOfSpeakers, lengthType, videoDuration, aiProvider, selectedModel, isDarkFrontiers, fullOutlineText, generatedScript, autoContinue]);
+
+  const handleStartSequentialGenerate = useCallback(() => {
+    if (!generatedScript) return;
+    const parts = parseOutlineIntoSegments(generatedScript);
+    if (parts.length === 0) {
+        setError('Không tìm thấy cấu trúc phần trong dàn ý. Vui lòng thử lại.');
+        return;
+    }
+    setOutlineParts(parts);
+    setCurrentPartIndex(0);
+    setIsGeneratingSequentially(true);
+    
+    // Immediately start part 0
+    // We update state first then call next tick
+    setGeneratedScript('--- BẮT ĐẦU TẠO KỊCH BẢN CHI TIẾT ---\n\n');
+  }, [generatedScript]);
+
+  // Effect to trigger first part when isGeneratingSequentially turns true
+  useEffect(() => {
+      if (isGeneratingSequentially && currentPartIndex === 0 && outlineParts.length > 0 && !isLoading && generatedScript.includes('BẮT ĐẦU')) {
+          handleGenerateNextPart(0);
+      }
+  }, [isGeneratingSequentially, currentPartIndex, outlineParts.length, isLoading, generatedScript, handleGenerateNextPart]);
 
   const handleReviseScript = useCallback(async () => {
     if (!generatedScript || !revisionPrompt.trim()) return;
@@ -605,7 +624,7 @@ const App: React.FC = () => {
             script={generatedScript} isLoading={isLoading} error={error}
             onStartSequentialGenerate={handleStartSequentialGenerate} 
             isGeneratingSequentially={isGeneratingSequentially} 
-            onGenerateNextPart={handleGenerateNextPart} 
+            onGenerateNextPart={() => handleGenerateNextPart()} 
             currentPart={currentPartIndex} 
             totalParts={outlineParts.length}
             revisionCount={revisionCount} 
@@ -620,6 +639,8 @@ const App: React.FC = () => {
                  reader.onload = (e) => setGeneratedScript(e.target?.result as string);
                  reader.readAsText(file);
             }}
+            autoContinue={autoContinue}
+            setAutoContinue={setAutoContinue}
           />
         </div>
          <div className="lg:col-span-3">

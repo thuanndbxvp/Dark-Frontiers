@@ -29,6 +29,8 @@ interface OutputDisplayProps {
   hasGeneratedAllVisualPrompts: boolean;
   visualPromptsCache: Map<string, VisualPrompt>;
   onImportScript: (file: File) => void;
+  autoContinue?: boolean;
+  setAutoContinue?: (val: boolean) => void;
 }
 
 const InitialState: React.FC<{ onImportClick: () => void }> = ({ onImportClick }) => (
@@ -37,50 +39,45 @@ const InitialState: React.FC<{ onImportClick: () => void }> = ({ onImportClick }
         <p className="text-lg">Biến ý tưởng lóe lên thành kịch bản chuyên nghiệp, hoặc <button onClick={onImportClick} className="text-accent hover:underline font-semibold inline">import kịch bản có sẵn</button> để bắt đầu tinh chỉnh.</p>
 
         <div className="mt-8 space-y-6">
-            {/* Step 1 */}
             <div className="bg-secondary p-6 rounded-lg border border-border flex gap-6 items-start">
                 <div className="flex-shrink-0 bg-accent text-white rounded-full w-12 h-12 flex items-center justify-center font-bold text-xl shadow-md shadow-accent/20">1</div>
                 <div>
                     <h3 className="font-semibold text-accent/90 text-lg mb-2">Bước 1: Khởi động Ý tưởng (hoặc Kịch bản)</h3>
                     <ul className="list-disc list-inside space-y-2 text-sm text-text-secondary">
-                        <li><strong>Cài đặt API Key:</strong> Đây là bước đầu tiên và quan trọng nhất. Nhấp vào nút "API" ở góc trên bên phải để thêm key của bạn.</li>
-                        <li><strong>Nhập ý tưởng:</strong> Trong ô "Ý tưởng chính", điền chủ đề chính hoặc phác thảo sơ bộ nội dung bạn muốn.</li>
-                        <li><strong>Hoặc Import kịch bản:</strong> Nhấn nút "Import" ở trên để tải lên file .txt, .srt, hoặc .xlsx và bắt đầu làm việc ngay.</li>
-                        <li><strong>Chọn AI:</strong> Lựa chọn nhà cung cấp AI (Gemini hoặc OpenAI) và model phù hợp nhất với nhu cầu của bạn.</li>
+                        <li><strong>Cài đặt API Key:</strong> Nhấp vào nút "API" để thêm key của bạn.</li>
+                        <li><strong>Nhập ý tưởng:</strong> Trong ô "Ý tưởng chính", điền chủ đề video.</li>
+                        <li><strong>Chọn AI:</strong> Lựa chọn Gemini hoặc OpenAI phù hợp nhất.</li>
                     </ul>
                 </div>
             </div>
 
-            {/* Step 2 */}
             <div className="bg-secondary p-6 rounded-lg border border-border flex gap-6 items-start">
                 <div className="flex-shrink-0 bg-accent text-white rounded-full w-12 h-12 flex items-center justify-center font-bold text-xl shadow-md shadow-accent/20">2</div>
                 <div>
                     <h3 className="font-semibold text-accent/90 text-lg mb-2">Bước 2: Tinh chỉnh & Sáng tạo</h3>
                     <ul className="list-disc list-inside space-y-2 text-sm text-text-secondary">
-                        <li><strong>Từ khóa SEO:</strong> Thêm các từ khóa quan trọng vào ô "Từ khóa" để AI lồng ghép chúng một cách tự nhiên, giúp video dễ được tìm thấy hơn.</li>
-                        <li><strong>Thiết lập phong cách:</strong> Trong các mục "Lối diễn đạt" và "Phong cách Viết", hãy chọn các tùy chọn phù hợp nhất, hoặc nhấn "AI Gợi ý Phong cách" để AI đề xuất cho bạn.</li>
-                        <li><strong>Tạo kịch bản:</strong> Khi đã sẵn sàng, nhấn nút "Tạo kịch bản" và chứng kiến phép màu!</li>
+                        <li><strong>Từ khóa SEO:</strong> Thêm từ khóa để AI lồng ghép tự nhiên.</li>
+                        <li><strong>Phong cách:</strong> Nhấn "AI Gợi ý Phong cách" để tối ưu hóa tông giọng.</li>
+                        <li><strong>Tạo kịch bản:</strong> Nhấn nút "Tạo kịch bản" và chờ đợi kết quả.</li>
                     </ul>
                 </div>
             </div>
 
-            {/* Step 3 */}
             <div className="bg-secondary p-6 rounded-lg border border-border flex gap-6 items-start">
                 <div className="flex-shrink-0 bg-accent text-white rounded-full w-12 h-12 flex items-center justify-center font-bold text-xl shadow-md shadow-accent/20">3</div>
                 <div>
-                    <h3 className="font-semibold text-accent/90 text-lg mb-2">Bước 3: Hậu kỳ & Hoàn thiện</h3>
+                    <h3 className="font-semibold text-accent/90 text-lg mb-2">Bước 3: Hoàn thiện</h3>
                     <ul className="list-disc list-inside space-y-2 text-sm text-text-secondary">
-                        <li><strong>Sửa đổi:</strong> Kịch bản chưa ưng ý? Sử dụng ô "Sửa Kịch bản" ở cột bên phải để yêu cầu AI chỉnh sửa cho đến khi bạn hoàn toàn hài lòng.</li>
-                        <li><strong>Chuyển thể:</strong> Dùng nút "Chuyển thể kịch bản" để tự động tạo tóm tắt và prompt hình ảnh/video chi tiết cho từng cảnh quay.</li>
-                        <li><strong>Tách & Đếm từ:</strong> Nhấn "Tách voice và đếm số từ" để tách riêng phần lời thoại (dùng để thu âm) và kiểm tra số từ.</li>
-                        <li><strong>Giọng nói AI:</strong> Sử dụng nút "Chuyển thành Giọng nói" để chuyển lời thoại thành file audio chuyên nghiệp với ElevenLabs.</li>
+                        <li><strong>Sửa đổi:</strong> Sử dụng ô "Sửa Kịch bản" để yêu cầu tinh chỉnh.</li>
+                        <li><strong>Chuyển thể:</strong> Tạo tóm tắt và prompt hình ảnh cho từng cảnh.</li>
+                        <li><strong>Giọng nói AI:</strong> Chuyển lời thoại thành file audio chuyên nghiệp.</li>
                     </ul>
                 </div>
             </div>
         </div>
         
         <p className="mt-10 text-center font-semibold text-text-primary text-lg">
-            Bạn đã sẵn sàng chưa? Hãy bắt đầu từ Bước 1 ở bảng điều khiển bên trái!
+            Sẵn sàng chưa? Hãy bắt đầu từ Bước 1!
         </p>
     </div>
 );
@@ -106,7 +103,9 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
     scriptType,
     hasGeneratedAllVisualPrompts,
     visualPromptsCache,
-    onImportScript
+    onImportScript,
+    autoContinue,
+    setAutoContinue
 }) => {
     const [copySuccess, setCopySuccess] = useState('');
     const [loadingPromptIndex, setLoadingPromptIndex] = useState<number | null>(null);
@@ -156,7 +155,6 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
         if (file) {
             onImportScript(file);
         }
-        // Reset input to allow re-uploading the same file
         event.target.value = '';
     };
     
@@ -165,13 +163,13 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
 
     const getTitle = () => {
         if (isGeneratingSequentially) {
-            return `Đang tạo kịch bản... (Phần ${currentPart}/${totalParts})`;
+            return `Tiến trình: ${currentPart}/${totalParts} phần`;
         }
         if (revisionCount > 0) {
             return `Kịch bản (sửa lần ${revisionCount})`;
         }
         if (isLoading) {
-            return 'Kịch bản đang được tạo';
+            return 'Đang xử lý kịch bản...';
         }
         return 'Kịch bản';
     };
@@ -258,17 +256,6 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
                 </button>
                 {showActionControls && (
                     <>
-                         {!isOutline && (
-                            <button 
-                                onClick={onGenerateAllVisualPrompts} 
-                                className="flex items-center space-x-2 bg-secondary hover:bg-primary/50 text-text-primary px-3 py-1.5 rounded-md text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed border border-border" 
-                                disabled={isGeneratingAllVisualPrompts || isLoading}
-                            >
-                                <CameraIcon className="w-4 h-4" />
-                                <span>{isGeneratingAllVisualPrompts ? 'Đang tạo...' : 'Tạo ảnh/video'}</span>
-                                {hasGeneratedAllVisualPrompts && !isGeneratingAllVisualPrompts && <CheckIcon className="w-4 h-4 text-green-400 ml-1" />}
-                            </button>
-                        )}
                         <button onClick={handleExportTxt} className="flex items-center space-x-2 bg-secondary hover:bg-primary/50 text-text-primary px-3 py-1.5 rounded-md text-sm transition disabled:opacity-50 disabled:cursor-not-allowed border border-border" disabled={isLoading}>
                             <DownloadIcon className="w-4 h-4" />
                             <span>Tải .txt</span>
@@ -286,11 +273,29 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
                 {renderContent()}
             </div>
         </div>
-        {isGeneratingSequentially && currentPart < totalParts && !isLoading && (
-            <div className="p-4 border-t border-border">
-                <button onClick={onGenerateNextPart} className="w-full flex items-center justify-center bg-accent hover:brightness-110 text-white font-bold py-3 px-4 rounded-lg transition shadow-md shadow-accent/20">
-                    Tiếp tục tạo phần {currentPart + 1}/{totalParts}
-                </button>
+        {isGeneratingSequentially && !isLoading && (
+            <div className="p-4 border-t border-border bg-primary/30 flex justify-between items-center gap-4">
+                <div className="flex items-center gap-2">
+                    <input 
+                        type="checkbox" 
+                        id="autoContinue" 
+                        checked={autoContinue} 
+                        onChange={(e) => setAutoContinue?.(e.target.checked)} 
+                        className="h-4 w-4 rounded border-border text-accent focus:ring-accent bg-secondary"
+                    />
+                    <label htmlFor="autoContinue" className="text-sm font-medium text-text-primary cursor-pointer">Tự động tạo tiếp</label>
+                </div>
+                {currentPart < totalParts && (
+                    <button onClick={onGenerateNextPart} className="flex-1 max-w-xs flex items-center justify-center bg-accent hover:brightness-110 text-white font-bold py-2.5 px-4 rounded-lg transition shadow-md shadow-accent/20">
+                        Tiếp tục phần {currentPart + 1}/{totalParts}
+                    </button>
+                )}
+                {currentPart === totalParts && (
+                    <div className="flex items-center gap-2 text-green-400 font-bold">
+                        <CheckIcon className="w-5 h-5" />
+                        <span>Kịch bản đã hoàn tất!</span>
+                    </div>
+                )}
             </div>
         )}
     </div>

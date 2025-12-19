@@ -266,10 +266,14 @@ export const extractDialogue = async (script: string, provider: AiProvider, mode
 };
 
 export const generateKeywordSuggestions = async (title: string, provider: AiProvider, model: string): Promise<string[]> => {
-    const prompt = `Suggest 10 relevant SEO keywords for a video titled "${title}". Return as comma-separated list.`;
+    const isDarkFrontiers = title.toLowerCase().includes('dark') || title.toLowerCase().includes('horror') || title.toLowerCase().includes('mystery');
+    const prompt = `Bạn là chuyên gia SEO YouTube. Hãy gợi ý 10 từ khóa SEO quan trọng nhất cho một video có tiêu đề: "${title}".
+    ${isDarkFrontiers ? "Lưu ý: Đây là kịch bản kinh dị/bí ẩn, hãy tập trung vào các từ khóa gây tò mò, rùng rợn, khám phá bí ẩn." : ""}
+    Kết quả trả về chỉ bao gồm các từ khóa, phân tách bằng dấu phẩy.
+    Ngôn ngữ từ khóa: Tiếng Việt.`;
     try {
         const response = await callApi(prompt, provider, model);
-        return response.split(',').map(k => k.trim());
+        return response.split(',').map(k => k.trim().replace(/^[\d\.\-\s]+/, '')).filter(Boolean);
     } catch (e) {
         throw handleApiError(e, 'gợi ý từ khóa');
     }
