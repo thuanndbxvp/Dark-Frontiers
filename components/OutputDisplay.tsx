@@ -85,15 +85,25 @@ const InitialState: React.FC<{ onImportClick: () => void }> = ({ onImportClick }
     </div>
 );
 
-const parseMarkdown = (text: string) => {
+// Helper to clean script text for TTS display in the table
+const cleanTtsText = (text: string): string => {
     return text
-        .replace(/\*\*(.*?)\*\*/g, '<strong class="text-text-primary">$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/^### (.*$)/gim, '<h3 class="text-xl font-semibold mt-6 mb-3 text-accent/90">$1</h3>')
-        .replace(/^## (.*$)/gim, '<h2 class="text-2xl font-bold mt-8 mb-4 text-accent border-b-2 border-border pb-2">$1</h2>')
-        .replace(/^# (.*$)/gim, '<h1 class="text-3xl font-extrabold mt-8 mb-4 text-accent border-b-2 border-border pb-2">$1</h1>')
-        .replace(/---/g, '<hr class="border-border my-6">')
-        .replace(/\n/g, '<br />');
+        .replace(/\*\*\*+/g, '') // Remove ***
+        .replace(/\[.*?\]/g, '') // Remove [SFX], [Scene]
+        .replace(/\*\*\s*#+.*?\*\*/g, '') // Remove headers inside bold
+        .replace(/^\s*\*\*#+.*?\*\*/gm, '') // Header lines
+        .replace(/\*\*\s*\(.*?\)\s*\*\*/g, '') // Tone instructions bold
+        .replace(/\*\s*\(.*?\)\s*\*/g, '') // Tone instructions italic
+        .replace(/\(.*?Voice.*?\)/gi, '') // Voice notes
+        .replace(/^Visual:.*$/gim, '') 
+        .replace(/^Audio:.*$/gim, '')
+        .replace(/^SFX:.*$/gim, '')
+        .replace(/^Scene:.*$/gim, '')
+        .replace(/^Camera:.*$/gim, '')
+        .replace(/\*\*(.*?)\*\*/g, '$1') // Unbold
+        .replace(/\*(.*?)\*/g, '$1') // Unitalic
+        .replace(/\n\s*\n/g, '\n') // Multiple newlines to single
+        .trim();
 };
 
 export const OutputDisplay: React.FC<OutputDisplayProps> = ({ 
@@ -183,46 +193,72 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
             </div>;
         }
         if (script) {
-            const sections = script.split(/(?=^## .*?$|^### .*?$)/m).filter(s => s.trim() !== '');
-            return sections.map((section, index) => {
-                const isPartLoading = loadingVisualPromptsParts.has(section);
-                const hasCache = visualPromptsCache.has(section);
-
+            // Split by main headers
+            const sections = script.split(/(?=^#+ .*?$|^#{0,3}\s*\*\*#+ .*?)/m).filter(s => s.trim() !== '' && !s.includes('---'));
+            
+            // If it's just the initial "BẮT ĐẦU" or "DÀN Ý", render as simple text
+            if (isOutline || script.includes('--- BẮT ĐẦU')) {
                 return (
-                    <div key={index} className="script-section mb-4 pb-4 border-b border-border/50 last:border-b-0">
-                        <div className="prose prose-invert max-w-none prose-p:text-text-secondary prose-p:leading-relaxed prose-strong:text-text-primary" dangerouslySetInnerHTML={{ __html: parseMarkdown(section) }} />
-                        {!isOutline && section.trim().length > 50 && (
-                            <div className="mt-3 text-right">
-                                <button
-                                    onClick={() => onGenerateVisualPrompt(section)}
-                                    disabled={isPartLoading}
-                                    className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-md transition disabled:opacity-50 ${
-                                        hasCache 
-                                        ? 'bg-accent/10 hover:bg-accent/20 text-accent border border-accent/30' 
-                                        : 'bg-secondary hover:bg-primary/50 text-text-primary'
-                                    }`}
-                                >
-                                    {isPartLoading ? (
-                                        <>
-                                         <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                         </svg>
-                                         <span>Đang tạo...</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                          <CameraIcon className="w-4 h-4" />
-                                          <span>{hasCache ? 'Xem prompt' : 'Tạo 4 Prompts Hình ảnh'}</span>
-                                          {hasCache && <CheckIcon className="w-4 h-4 text-green-400 ml-1" />}
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                        )}
+                    <div className="prose prose-invert max-w-none prose-p:text-text-secondary">
+                        <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-text-secondary bg-primary/20 p-4 rounded-lg border border-border/50">
+                            {script}
+                        </pre>
                     </div>
                 );
-            });
+            }
+
+            return (
+                <div className="overflow-x-auto rounded-lg border border-border">
+                    <table className="w-full border-collapse text-left">
+                        <thead className="bg-primary/50 text-accent font-bold text-xs uppercase tracking-wider">
+                            <tr>
+                                <th className="p-4 border-b border-border w-1/4">Tên phân đoạn</th>
+                                <th className="p-4 border-b border-border w-3/4">Kịch bản (Ready for tts)</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/50">
+                            {sections.map((section, index) => {
+                                const lines = section.split('\n');
+                                const rawTitle = lines[0].trim().replace(/^\*\*#+|\*\*|#+\s*/g, '');
+                                const content = lines.slice(1).join('\n');
+                                const cleanedTts = cleanTtsText(content);
+                                
+                                const isPartLoading = loadingVisualPromptsParts.has(section);
+                                const hasCache = visualPromptsCache.has(section);
+
+                                if (!cleanedTts && !rawTitle) return null;
+
+                                return (
+                                    <tr key={index} className="group hover:bg-primary/20 transition-colors">
+                                        <td className="p-4 align-top">
+                                            <span className="text-sm font-bold text-text-primary block mb-2">{rawTitle || `Phần ${index + 1}`}</span>
+                                            {/* Action button for visual prompt moved here for cleaner UI */}
+                                            {cleanedTts.length > 50 && (
+                                                <button
+                                                    onClick={() => onGenerateVisualPrompt(section)}
+                                                    disabled={isPartLoading}
+                                                    className={`inline-flex items-center gap-2 px-2 py-1 text-[10px] font-bold rounded transition disabled:opacity-50 ${
+                                                        hasCache 
+                                                        ? 'bg-accent/10 text-accent border border-accent/20' 
+                                                        : 'bg-secondary text-text-secondary border border-border'
+                                                    }`}
+                                                >
+                                                    {isPartLoading ? '...' : (hasCache ? 'PROMPT ✓' : '+ ẢNH')}
+                                                </button>
+                                            )}
+                                        </td>
+                                        <td className="p-4 align-top">
+                                            <p className="text-sm text-text-secondary leading-relaxed whitespace-pre-wrap">
+                                                {cleanedTts || <span className="italic opacity-30">(Không có lời thoại)</span>}
+                                            </p>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            );
         }
         if (!isLoading) return <InitialState onImportClick={handleImportClick} />;
         return null;
