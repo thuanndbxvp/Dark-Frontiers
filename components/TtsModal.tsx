@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import type { ElevenlabsVoice } from '../types';
+import type { ElevenlabsVoice, TtsGenerationStatus } from '../types';
 import { DownloadIcon } from './icons/DownloadIcon';
 import { PlayIcon } from './icons/PlayIcon';
 import { SpeakerWaveIcon } from './icons/SpeakerWaveIcon';
@@ -12,18 +12,15 @@ import { getElevenlabsVoiceById } from '../services/aiService';
 interface TtsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  dialogue: Record<string, string> | null;
   voices: ElevenlabsVoice[];
   isLoadingVoices: boolean;
   onGenerate: (text: string, voiceId: string) => Promise<string>;
   error: string | null;
-}
-
-interface GenerationStatus {
-    isLoading: boolean;
-    audioUrl: string | null;
-    duration: number | null;
-    error: string | null;
+  // SESSION PROPS
+  editableDialogue: Record<string, string>;
+  setEditableDialogue: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  generationState: Record<string, TtsGenerationStatus>;
+  setGenerationState: React.Dispatch<React.SetStateAction<Record<string, TtsGenerationStatus>>>;
 }
 
 // Helper định dạng thời gian cho SRT: HH:mm:ss,mmm
@@ -99,13 +96,11 @@ const generateSrtContent = (text: string, duration: number): string => {
     if (finalChunks.length === 0) return "";
 
     // 3. Tính toán thời gian dựa trên trọng số độ dài ký tự (Character Weighting)
-    // Giúp câu ngắn xuất hiện nhanh, câu dài xuất hiện lâu hơn, khớp với tốc độ nói tự nhiên
     const totalChars = finalChunks.reduce((sum, chunk) => sum + chunk.length, 0);
     let currentTime = 0;
     let srt = "";
 
     finalChunks.forEach((chunk, index) => {
-        // Tỉ lệ thời gian = (độ dài câu / tổng độ dài) * tổng thời gian audio
         const chunkDuration = (chunk.length / totalChars) * duration;
         const start = currentTime;
         const end = currentTime + chunkDuration;
@@ -181,16 +176,24 @@ const VoiceItem: React.FC<{voice: ElevenlabsVoice, isSelected: boolean, onSelect
     );
 };
 
-export const TtsModal: React.FC<TtsModalProps> = ({ isOpen, onClose, dialogue, voices, isLoadingVoices, onGenerate, error }) => {
+export const TtsModal: React.FC<TtsModalProps> = ({ 
+    isOpen, 
+    onClose, 
+    voices, 
+    isLoadingVoices, 
+    onGenerate, 
+    error,
+    editableDialogue,
+    setEditableDialogue,
+    generationState,
+    setGenerationState
+}) => {
     const [selectedVoiceId, setSelectedVoiceId] = useState<string>('');
     const [customVoiceId, setCustomVoiceId] = useState<string>('');
     const [isFetchingCustomVoice, setIsFetchingCustomVoice] = useState(false);
     const [customVoiceData, setCustomVoiceData] = useState<ElevenlabsVoice | null>(null);
     const [savedVoices, setSavedVoices] = useState<ElevenlabsVoice[]>([]);
     
-    const [editableDialogue, setEditableDialogue] = useState<Record<string, string>>({});
-    const [generationState, setGenerationState] = useState<Record<string, GenerationStatus>>({});
-
     useEffect(() => {
         const saved = localStorage.getItem('elevenlabs-custom-voices');
         if (saved) {
@@ -208,13 +211,6 @@ export const TtsModal: React.FC<TtsModalProps> = ({ isOpen, onClose, dialogue, v
         }
     }, [voices, selectedVoiceId, customVoiceId]);
 
-    useEffect(() => {
-        if (isOpen && dialogue) {
-            setEditableDialogue(dialogue);
-            setGenerationState({});
-        }
-    }, [isOpen, dialogue]);
-    
     if (!isOpen) return null;
 
     const handleFetchCustomVoice = async () => {
@@ -270,7 +266,6 @@ export const TtsModal: React.FC<TtsModalProps> = ({ isOpen, onClose, dialogue, v
         try {
             const url = await onGenerate(textToSpeak, finalVoiceId);
             
-            // Lấy thời lượng của file âm thanh để làm phụ đề
             const tempAudio = new Audio(url);
             tempAudio.onloadedmetadata = () => {
                 setGenerationState(prev => ({
@@ -308,7 +303,8 @@ export const TtsModal: React.FC<TtsModalProps> = ({ isOpen, onClose, dialogue, v
         URL.revokeObjectURL(url);
     };
 
-    const isAnyPartLoading = (Object.values(generationState) as GenerationStatus[]).some(s => s.isLoading);
+    // Fix: Explicitly cast values of generationState to TtsGenerationStatus[] to avoid 'unknown' type error
+    const isAnyPartLoading = (Object.values(generationState) as TtsGenerationStatus[]).some(s => s.isLoading);
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex justify-center items-center p-4" onClick={onClose}>
@@ -325,7 +321,6 @@ export const TtsModal: React.FC<TtsModalProps> = ({ isOpen, onClose, dialogue, v
                 <div className="flex flex-col min-h-0">
                     <h3 className="text-lg font-semibold text-text-primary mb-3">1. Chọn một giọng đọc</h3>
                     
-                    {/* Ô nhập Voice ID thủ công */}
                     <div className="mb-4 bg-primary p-3 rounded-lg border border-border">
                         <label className="block text-xs font-bold text-text-secondary mb-2 uppercase tracking-wider flex items-center gap-2">
                             <KeyIcon className="w-3.5 h-3.5 text-accent"/>

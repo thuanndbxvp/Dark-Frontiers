@@ -116,3 +116,10 @@ export interface SummarizeConfig {
   scenarioType: ScenarioType;
   referenceImages?: string[];
 }
+
+export interface TtsGenerationStatus {
+    isLoading: boolean;
+    audioUrl: string | null;
+    duration: number | null;
+    error: string | null;
+}
