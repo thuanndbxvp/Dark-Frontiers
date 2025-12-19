@@ -90,14 +90,23 @@ export const validateApiKey = async (key: string, provider: AiProvider): Promise
     return false;
 };
 
+// --- DARK FRONTIERS DNA UPGRADED (STYLE CALIBRATION) ---
 const DARK_FRONTIERS_DNA = `
-Bạn là Content Officer cho kênh "Dark Frontiers", chuyên gia về Kinh dị Dã sử.
-TRIẾT LÝ: Bán nỗi sợ núp bóng lịch sử.
-PHONG CÁCH: Ominous, Gritty, Melancholic.
-QUY TẮC CẤU TRÚC (BẮT BUỘC):
-- Phải chia kịch bản thành các phần rõ ràng.
-- MỖI PHẦN PHẢI BẮT ĐẦU BẰNG TIÊU ĐỀ: ## [TÊN PHẦN] (Ví dụ: ## THE HOOK).
-- Tuyệt đối không viết rác kỹ thuật [SFX], [Visual].
+BẠN LÀ CONTENT OFFICER CHO KÊNH "DARK FRONTIERS" (KINH DỊ DÃ SỬ). 
+BẮT BUỘC TUÂN THỦ CÁC QUY TẮC PHONG CÁCH SAU (DNA):
+
+1. CẤU TRÚC 4 PHẦN (MỖI PHẦN BẮT ĐẦU BẰNG ##):
+   - ## THE HOOK: Dùng ngôi thứ 3 (Narrator). Tóm tắt hiện trường vụ án/kết cục bi thảm. Phải có bằng chứng vật lý kỳ quái (súng bị bẻ cong, xác không máu...). Kết thúc bằng CTA Subscribe.
+   - ## THE BODY (MAIN STORY): BẮT BUỘC CHUYỂN SANG NGÔI THỨ 1 ("TÔI"). Đặt tên nhân vật cụ thể (KHÔNG ĐƯỢC DÙNG TÊN "ELIAS"). Nhân vật phải có vai trò lịch sử (lính, thợ mỏ, thợ săn...).
+   - ## THE MONSTER: Slow burn. Quái vật thông minh, tâm lý, biết đùa giỡn/bắt chước giọng nói trước khi lộ diện.
+   - ## THE OUTRO: Nhân vật sống sót nhưng bị chấn thương tâm lý vĩnh viễn. Kết luận triết lý về nỗi sợ và sự nhỏ bé của con người.
+
+2. TRIẾT LÝ VIẾT: 
+   - SHOW, DON'T TELL: Đừng nói "Tôi sợ", hãy mô tả "Tay tôi run đến mức không châm nổi điếu thuốc".
+   - TẬP TRUNG GIÁC QUAN (SENSORY): Mô tả kỹ âm thanh (tiếng trườn, tiếng nghiền nát), mùi vị (mùi lưu huỳnh, mùi máu tanh).
+   - KHÔNG KỂ LỂ LỊCH SỬ NHƯ PHIM TÀI LIỆU. Hãy ném khán giả vào nỗi sợ thực tế.
+   - PHONG CÁCH: Ominous, Gritty, Melancholic, Psychological Horror.
+   - TUYỆT ĐỐI KHÔNG VIẾT RÁC KỸ THUẬT [SFX], [Visual] TRONG KỊCH BẢN TTS.
 `;
 
 const SOCIAL_REALISM_TEMPLATE = `19th century social realism painting style, dark historical realism.
@@ -112,16 +121,18 @@ Aspect ratio 16:9.
 [INSERT IMAGE CONTENT HERE]`;
 
 export const generateScript = async (params: GenerationParams, provider: AiProvider, model: string): Promise<string> => {
-    const { title, outlineContent, targetAudience, wordCount, isDarkFrontiers } = params;
-    let prompt = isDarkFrontiers ? `${DARK_FRONTIERS_DNA} HÃY VIẾT KỊCH BẢN SẠCH CHO: "${title}". NGÔN NGỮ: ${targetAudience}. ĐỘ DÀI: ${wordCount} từ. BẮT BUỘC chia phần ##.` 
-                               : `Viết kịch bản YouTube về "${title}". Ngôn ngữ: ${targetAudience}. Chia phần ##. KỊCH BẢN SẠCH.`;
+    const { title, targetAudience, wordCount, isDarkFrontiers } = params;
+    let prompt = isDarkFrontiers 
+        ? `${DARK_FRONTIERS_DNA}\nVIẾT KỊCH BẢN CHI TIẾT CHO: "${title}". NGÔN NGỮ: ${targetAudience}. ĐỘ DÀI: ${wordCount} từ.\nLƯU Ý: Phần Body phải dùng ngôi thứ nhất "Tôi".`
+        : `Viết kịch bản YouTube về "${title}". Ngôn ngữ: ${targetAudience}. Chia phần ##. KỊCH BẢN SẠCH.`;
     try { return await callApi(prompt, provider, model); } catch (error) { throw handleApiError(error, 'tạo kịch bản'); }
 };
 
 export const generateScriptOutline = async (params: GenerationParams, provider: AiProvider, model: string): Promise<string> => {
     const { title, targetAudience, isDarkFrontiers } = params;
-    let prompt = isDarkFrontiers ? `${DARK_FRONTIERS_DNA} Tạo dàn ý 5 phần ## cho "${title}". Ngôn ngữ: ${targetAudience}.` 
-                               : `Tạo dàn ý YouTube cho "${title}". Chia phần ##.`;
+    let prompt = isDarkFrontiers 
+        ? `${DARK_FRONTIERS_DNA}\nTạo dàn ý 4 phần BẮT BUỘC: ## THE HOOK, ## THE BODY, ## THE MONSTER, ## THE OUTRO cho chủ đề: "${title}". Ngôn ngữ: ${targetAudience}.` 
+        : `Tạo dàn ý YouTube cho "${title}". Chia phần ##.`;
     try {
         const outline = await callApi(prompt, provider, model);
         return `### Dàn Ý Chi Tiết (Chuẩn bị tạo kịch bản sạch cho TTS)\n\n` + outline;
@@ -129,10 +140,18 @@ export const generateScriptOutline = async (params: GenerationParams, provider: 
 };
 
 export const generateScriptPart = async (fullOutline: string, previousPartsScript: string, currentPartOutline: string, params: GenerationParams, provider: AiProvider, model: string): Promise<string> => {
-    const { targetAudience, wordCount, isDarkFrontiers, title } = params;
-    const estPartWords = Math.round(parseInt(wordCount) / 5);
-    let prompt = isDarkFrontiers ? `${DARK_FRONTIERS_DNA} VIẾT TIẾP PHẦN KỊCH BẢN: "${title}". BẮT BUỘC BẮT ĐẦU BẰNG TIÊU ĐỀ ##. Phần: ${currentPartOutline}. Ngôn ngữ: ${targetAudience}.`
-                               : `Viết tiếp phần này cho kịch bản "${title}". BẮT BUỘC bắt đầu bằng ##.`;
+    const { targetAudience, isDarkFrontiers, title } = params;
+    
+    let povInstruction = "";
+    if (isDarkFrontiers) {
+        if (currentPartOutline.toUpperCase().includes("HOOK")) povInstruction = "Sử dụng NGÔI THỨ 3 (Narrator).";
+        else povInstruction = "Sử dụng NGÔI THỨ 1 (Nhân vật kể chuyện 'Tôi'). Tập trung vào chi tiết giác quan (âm thanh, mùi).";
+    }
+
+    let prompt = isDarkFrontiers 
+        ? `${DARK_FRONTIERS_DNA}\nVIẾT TIẾP PHẦN KỊCH BẢN: "${currentPartOutline}".\nCHỦ ĐỀ: ${title}.\nQUY TẮC POV: ${povInstruction}\nNGÔN NGỮ: ${targetAudience}.\nBẮT BUỘC BẮT ĐẦU BẰNG TIÊU ĐỀ ##.`
+        : `Viết tiếp phần này cho kịch bản "${title}". BẮT BUỘC bắt đầu bằng ##.`;
+    
     try { return await callApi(prompt, provider, model); } catch (error) { throw handleApiError(error, 'tạo phần kịch bản'); }
 };
 
@@ -145,7 +164,7 @@ export const generateTopicSuggestions = async (title: string, provider: AiProvid
 };
 
 export const reviseScript = async (script: string, revisionPrompt: string, params: any, provider: AiProvider, model: string): Promise<string> => {
-    const prompt = `Chỉnh sửa kịch bản: "${revisionPrompt}". Giữ cấu trúc ##.\nKịch bản:\n${script}`;
+    const prompt = `Chỉnh sửa kịch bản theo yêu cầu: "${revisionPrompt}". \nLƯU Ý: Nếu là kịch bản Dark Frontiers, giữ vững cấu trúc ## và quy tắc ngôi thứ 1 cho phần Body.\nKịch bản:\n${script}`;
     try { return await callApi(prompt, provider, model); } catch (e) { throw handleApiError(e, 'sửa kịch bản'); }
 };
 
@@ -302,7 +321,13 @@ export const generateElevenlabsTts = async (text: string, voiceId: string): Prom
 };
 
 export const scoreScript = async (script: string, provider: AiProvider, model: string): Promise<string> => {
-    const prompt = `Chấm điểm DNA Dark Frontiers cho kịch bản này.`;
+    const prompt = `Bạn là Content Officer của Dark Frontiers. Hãy chấm điểm kịch bản này dựa trên DNA mới:
+    1. Cấu trúc 4 phần (## THE HOOK, ## THE BODY, ## THE MONSTER, ## THE OUTRO)?
+    2. Ngôi kể: Hook (3rd POV), Body (1st POV "Tôi")?
+    3. Sensory Details (Âm thanh, mùi vị)?
+    4. Không kể rác SFX/Visual?
+    5. Show, Don't Tell?
+    Hãy đưa ra nhận xét khắt khe.`;
     try { return await callApi(prompt, provider, model); } catch (e) { throw handleApiError(e, 'chấm điểm kịch bản'); }
 };
 
