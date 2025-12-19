@@ -54,7 +54,7 @@ const InitialState: React.FC<{ onImportClick: () => void }> = ({ onImportClick }
             </div>
 
             <div className="bg-secondary p-6 rounded-lg border border-border flex gap-6 items-start">
-                <div className="flex-shrink-0 bg-accent text-white rounded-full w-12 h-12 flex items-center justify-center font-bold text-xl shadow-md shadow-accent/20">2</div>
+                <div className="flex-shrink-0 text-white rounded-full w-12 h-12 flex items-center justify-center font-bold text-xl shadow-md" style={{ backgroundColor: 'var(--color-accent)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' }}>2</div>
                 <div>
                     <h3 className="font-semibold text-accent/90 text-lg mb-2">Bước 2: Tinh chỉnh & Sáng tạo</h3>
                     <ul className="list-disc list-inside space-y-2 text-sm text-text-secondary">
@@ -66,7 +66,7 @@ const InitialState: React.FC<{ onImportClick: () => void }> = ({ onImportClick }
             </div>
 
             <div className="bg-secondary p-6 rounded-lg border border-border flex gap-6 items-start">
-                <div className="flex-shrink-0 bg-accent text-white rounded-full w-12 h-12 flex items-center justify-center font-bold text-xl shadow-md shadow-accent/20">3</div>
+                <div className="flex-shrink-0 text-white rounded-full w-12 h-12 flex items-center justify-center font-bold text-xl shadow-md" style={{ backgroundColor: 'var(--color-accent)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' }}>3</div>
                 <div>
                     <h3 className="font-semibold text-accent/90 text-lg mb-2">Bước 3: Hoàn thiện</h3>
                     <ul className="list-disc list-inside space-y-2 text-sm text-text-secondary">
@@ -247,29 +247,41 @@ export const OutputDisplay: React.FC<OutputDisplayProps> = ({
                 )}
             </h2>
             <div className="flex items-center gap-3 flex-wrap">
-                {script && isOutline && (
-                    <div className="flex items-center gap-2 bg-primary/40 px-3 py-1.5 rounded-md border border-border mr-1">
-                        <input 
-                            type="checkbox" 
-                            id="header-autoContinue" 
-                            checked={autoContinue} 
-                            onChange={(e) => setAutoContinue?.(e.target.checked)} 
-                            className="h-4 w-4 rounded border-border text-accent focus:ring-accent bg-secondary"
-                        />
-                        <label htmlFor="header-autoContinue" className="text-xs font-medium text-text-secondary cursor-pointer whitespace-nowrap">Auto-next</label>
-                    </div>
-                )}
-
                 {script && !isLoading && isOutline && !isGeneratingSequentially && (
-                    <button onClick={onStartSequentialGenerate} className="flex items-center space-x-2 bg-accent hover:brightness-110 text-white px-3 py-1.5 rounded-md text-sm font-semibold transition shadow-md shadow-accent/20">
-                        <BoltIcon className="w-4 h-4" />
-                        <span>Tạo kịch bản đầy đủ</span>
-                    </button>
+                    <div className="flex items-center gap-3">
+                         <div className="flex items-center gap-2 bg-primary/40 px-3 py-1.5 rounded-md border border-border">
+                            <input 
+                                type="checkbox" 
+                                id="header-autoContinue" 
+                                checked={autoContinue} 
+                                onChange={(e) => setAutoContinue?.(e.target.checked)} 
+                                className="h-4 w-4 rounded border-border text-accent focus:ring-accent bg-secondary"
+                            />
+                            <label htmlFor="header-autoContinue" className="text-xs font-medium text-text-secondary cursor-pointer whitespace-nowrap">Auto-next</label>
+                        </div>
+                        <button onClick={onStartSequentialGenerate} className="flex items-center space-x-2 bg-accent hover:brightness-110 text-white px-3 py-1.5 rounded-md text-sm font-semibold transition shadow-md shadow-accent/20">
+                            <BoltIcon className="w-4 h-4" />
+                            <span>Tạo kịch bản đầy đủ</span>
+                        </button>
+                    </div>
                 )}
 
                 {isGeneratingSequentially && (
                     <div className="flex items-center gap-2">
-                        {/* Continue Button in Header */}
+                        {/* Auto-next Toggle inside Generation Flow */}
+                        <button 
+                            onClick={() => setAutoContinue?.(!autoContinue)}
+                            className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-sm font-semibold transition border ${
+                                autoContinue 
+                                ? 'bg-accent/10 border-accent/50 text-accent' 
+                                : 'bg-primary/50 border-border text-text-secondary'
+                            }`}
+                        >
+                            <div className={`w-3 h-3 rounded-full ${autoContinue ? 'bg-accent animate-pulse' : 'bg-text-secondary'}`} />
+                            <span>Auto-next: {autoContinue ? 'Bật' : 'Tắt'}</span>
+                        </button>
+
+                        {/* Continue Button */}
                         {!isLoading && currentPart < totalParts && (
                             <button 
                                 onClick={onGenerateNextPart} 
