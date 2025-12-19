@@ -881,7 +881,14 @@ const App: React.FC = () => {
       <ApiKeyModal isOpen={isApiKeyModalOpen} onClose={() => setIsApiKeyModalOpen(false)} currentApiKeys={apiKeys} onSaveKeys={handleSaveApiKeys} />
       <LibraryModal isOpen={isLibraryOpen} onClose={() => setIsLibraryOpen(false)} library={library} onLoad={handleLoadScript} onDelete={handleDeleteScript} onExport={() => {}} onImport={() => {}} />
       <SavedIdeasModal isOpen={isSavedIdeasModalOpen} onClose={() => setIsSavedIdeasModalOpen(false)} ideas={savedIdeas} onLoad={(i) => { setTitle(i.title); setOutlineContent(i.outline); setIsSavedIdeasModalOpen(false); }} onDelete={(id) => setSavedIdeas(prev => prev.filter(i => i.id !== id))} />
-      <DialogueModal isOpen={isDialogueModalOpen} onClose={() => setIsDialogueModalOpen(false)} dialogue={extractedDialogue} isLoading={isExtracting} error={extractionError} />
+      <DialogueModal 
+          isOpen={isDialogueModalOpen} 
+          onClose={() => setIsDialogueModalOpen(false)} 
+          dialogue={extractedDialogue} 
+          isLoading={isExtracting} 
+          error={extractionError} 
+          onReExtract={handleExtractDialogue}
+      />
       <ScoreModal isOpen={isScoreModalOpen} onClose={() => setIsScoreModalOpen(false)} score={scriptScore} isLoading={isScoring} error={scoringError} />
       <VisualPromptModal isOpen={isVisualPromptModalOpen} onClose={() => setIsVisualPromptModalOpen(false)} prompts={visualPrompts} isLoading={isGeneratingVisualPrompt} error={visualPromptError} />
       <AllVisualPromptsModal isOpen={isAllVisualPromptsModalOpen} onClose={() => setIsAllVisualPromptsModalOpen(false)} prompts={allVisualPrompts} isLoading={isGeneratingAllVisualPrompts} error={allVisualPromptsError} />
